@@ -1,0 +1,77 @@
+     The Pygmy Forth version 1.7 package of May, 2007 consists of the
+following files:
+
+4intro.txt              short introduction to Forth
+
+ed.dow                  simple line editor shadow blocks
+ed.scr                  simple line editor source blocks
+
+files.txt               this file
+
+license20040130.txt     license
+
+pygmy.com               the program itself.  It includes the kernel, the
+                        editor, the assembler, and extensions to allow 
+                        printing the source code.
+
+pygmy.dow               shadow blocks for pygmy.scr
+pygmy.scr               block file containing the source code for the 
+                        kernel, editor, assembler, meta-compiler, and various 
+                        extensions. 
+
+pygmy.txt               the Pygmy Forth manual
+
+readme                  brief start up information
+
+serial.dow              shadow blocks for serial.scr
+serial.scr              serial port source code
+
+tutorial.txt            short Pygmy Forth tutorial
+
+yourfile.dow            (blank) shadow blocks for yourfile.scr
+yourfile.scr            an empty block file all ready for you to program 
+                        in.  It is provided so you can get started right 
+                        away without having to worry about creating or 
+                        opening files.
+
+./extras:
+6811asm.dow             source, shadow, and documentation on
+6811asm.scr             the Pygmy 68HC11 assembler
+6811asm.txt
+
+cmforth.dow             source and shadow blocks for the base
+cmforth.scr             and inspiration for Pygmy
+
+doubquad.scr            higher precision math routines
+
+help.txt                article on creating help screens
+
+metacomp.txt            article on the metacompiler
+
+
+./extras/3ins4th:       article and code for "A 3-Instruction Forth"
+3ins4th.html            
+demo.scr
+mona1.scr
+mond0.scr
+mone1.scr
+monitor.txt
+readme
+
+./extras/cfth:          article on calling C routines from Forth
+bgi.dow                 and vice versa
+bgi.scr
+cpyg.txt
+lp.c
+
+./extras/kermit:        the Kermit file transfer protocol in Pygmy
+kermit.dow
+kermit.scr
+listing.ker
+pfaaaa.ann
+pfaaaa.txt
+pfkerm.doc
+pfkerm.msg
+pfkerm.src
+pfkerm.txt
+readme.txt

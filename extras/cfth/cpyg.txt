@@ -1,0 +1,692 @@
+               Co-ordinating Pygmy and C
+
+                   by Frank Sergeant
+
+    A few changes allow Pygmy Forth to be wrapped inside a C
+program.  The C program can pass strings to be INTERPRETed
+by Pygmy.  Pygmy can call C library functions or functions
+defined in the C program.
+
+Overview
+
+    The essence of this method is this: The C wrapper
+program allocates RAM into which it loads the Forth image.
+The C wrapper contains a table holding the addresses of
+functions or structures (variables) we want Forth to be able
+to access.  C calls the loaded Forth image as a function,
+passing along the address of the table.  Via the table,
+Forth can call the C functions or read or modify the C
+structures (variables).  Eventually, Forth terminates,
+returning control to the C wrapper.
+
+     The mere mention of the function name in the table in
+the C program causes the referenced function to be included
+by the linker when the C program is compiled and linked.
+
+     The address of the table is passed to Pygmy on the
+"command line" that Pygmy will INTERPRET.  Indeed, this
+mechanism is general enough that any Forth code to be
+INTERPRETed can be passed to Pygmy on this "command line."
+The same PYGMY.COM file that can serve as the Forth image to
+be loaded and called by the C program can also be executed
+directly from DOS, either with or without a string to be
+INTERPRETed.
+
+The CPU and Operating System
+
+     Pygmy runs under DOS on IBM PC compatible computers
+with CPUs in the 80x86 family (8088, 8086, 80286, 80386,
+80486, Pentium, etc.)  Although very widespread, this family
+of CPUs is so weird that perhaps a word or two of
+terminology are in order.
+
+     Memory is segmented.  A full address is composed of two
+parts.  The offset portion indicates how far into the
+segment the address is, but doesn't indicate where the
+segment begins.  Often, once the segment registers are set
+up, we forget about them and treat the offset portion as if
+it were the address.  This works fine as long as all the
+segment registers point to the same segment and we are
+content to access memory only within this one segment.  If
+we want to access memory outside of our segment, we must
+consider the segment portion of an address as well as the
+offset portion.  A full address might be written as SEG:OFF.
+For example 0123:4567 would mean an offset of 4567
+hexadecimal into the segment beginning at 0123 hexadecimal
+times 16.  I said it was weird.  You can think of the
+segment portion of an address as supplying the starting
+position of a segment in terms of paragraphs, where one
+paragraph is equal to 16 bytes.
+
+     In terms of Pygmy, the words @ and ! take 16-bit
+addresses (the offset only portion) and are relative to the
+single segment into which Pygmy is loaded by DOS.  DOS takes
+care of setting up the segment registers and we can more or
+less forget they even exist  -- unless we want to access
+something outside of our segment.  In C for DOS terminology,
+a far pointer is a SEG:OFF address.  Pygmy can fetch and
+store from/to such a 32-bit address with the words L@ and
+L!.  We will need this capability to access C data and
+functions.
+
+     The word "address" sometimes means the full SEG:OFF
+(far pointer) 32-bit address and sometimes just means the
+16-bit offset.
+
+     Although later members of the 80x86 family of CPUs have
+various modes (16-bit, 32-bit, protected, virtual, real).
+For our purposes, they are all just faster versions emulating
+the original 16-bit 8088/8086 "real mode".
+
+     The segment registers are CS, DS, ES, and SS.  SS is
+the stack segment register and is used in connection with
+the hardware stack pointer SP (which is Pygmy's data stack
+pointer) and register BP (which is Pygmy's return stack
+pointer).  CS is the code segment register used in
+connection with the CPU's IP instruction pointer register
+(program counter).  Most data access is in connection with
+the DS (data segment) register.  Pygmy keeps the top item of
+the data stack in the BX register.
+
+Command Line Access
+
+     Pygmy Forth is a 16-bit real mode program loaded from a
+.COM file.  DOS loads it into a 16-bit segment at an offset
+of $100 (256 decimal).  The first $100 bytes are reserved by
+DOS as the Program Segment Prefix (PSP).  Within the PSP (at
+offset $80) DOS places any command line parameters.  This
+takes the form of a Forth-style counted string followed by a
+carriage return.  For example, invoking Pygmy from the
+command line as
+
+     C:\>pygmy DUP DUP DUP
+
+causes DOS to put the string "DUP DUP DUP" at offset $80.
+
+If Pygmy could interpret from a string, say with the word
+EVALUATE ( a # -), it could interpret the command line with
+$80 ( a) COUNT ( a #) EVALUATE.
+
+We add the word EVALUATE to Pygmy as
+
+  $80 CONSTANT COMMAND-LINE  ( it acts like a counted string)
+
+  : EVALUATE ( a # -)
+    >IN 2@ PUSH PUSH    TIB @ PUSH  #TIB @ PUSH
+    ( a #) #TIB !  TIB !  (   )
+    0 0 INTERPRET
+    POP #TIB !  POP TIB !   POP POP >IN 2!  ;
+
+     We still have one minor problem.  If an error occurs,
+we must restore a proper value to TIB.  Otherwise, QUERY
+will try to use the most recently EVALUATEd string as the
+terminal input buffer.  It might not be long enough, etc.
+So, we also change the definition of ABORT slightly.  Pygmy
+already saves the default word to execute for EMIT in the
+variable DEFAULT-EMIT.  This is used inside ABORT so if an
+error occurs while output is directed to the printer, ABORT
+directs the output back to the screen.  Similarly, we create
+a DEFAULT-TIB so if an error occurs while EVALUATEing a
+string, the value of TIB can be restored to its proper
+value.
+
+  VARIABLE DEFAULT-TIB
+  TIB @ DEFAULT-TIB !
+
+  : (ABORT  ( -)
+    ['] DEFAULT-EMIT 1+ @  ['] EMIT 1+ !
+    DEFAULT-TIB @ TIB !
+    HERE TYPE$ SPACE POP POP TYPE$ SP! BLK @ ?DUP DROP QUIT ;
+
+  ' (ABORT IS ABORT
+
+
+Now Pygmy can INTERPRET any string passed on the command line, e.g.
+
+    C:\>pygmy  ." Hello, how are you?" CR KEY DROP
+
+or
+    C:\>pygmy  WORDS BYE
+
+If there is no string passed on the command line, an empty
+string is built at offset $80.  EVALUATEing it is equivalent
+to a NOP.  We might as well EVALUATE the command line every
+time Pygmy is started.  This is easily done by adding
+COMMAND-LINE COUNT EVALUATE to BOOT, as in
+
+  ( Change BOOT to interpret the command line)
+  : (BOOT ( -)
+    COMMAND-LINE COUNT ( a #) EVALUATE
+    ( if it doesn't do BYE, we fall through to the following:)
+    $3F ATTR !  CLS
+    CR ." PYGMY Forth v1.4  modified to interpret command line"
+    OPEN-FILES     .FILES
+    CR  ." hi"    QUIT ;
+
+  ' (BOOT IS BOOT
+
+Easy C
+
+    Once we can evaluate the command line, we can write a C
+program that executes Pygmy with C's spawn call which passes
+a command line to Pygmy.  When Pygmy does BYE, control is
+returned to the C program.
+
+     This is the simplest way to combine Pygmy and C, as it
+does not require modifying Pygmy any further than described
+above.  However, it has the disadvantage of not allowing
+Pygmy's dictionary to be extended easily.  Each time C calls
+(spawns) Pygmy, the original Pygmy executable file is
+reloaded.  In other words, the Forth image does not stay
+resident in memory.  Pygmy won't remember anything between
+calls.  (However, if all we want to do is allow Pygmy access
+to C functions or C library routines, this may be
+sufficient.)
+
+    A little further work on the kernel cures those
+problems.
+
+A More Complete C/Forth Interface
+
+     The next step modifies the Pygmy kernel so it can be
+called as a subroutine.  The C wrapper program builds a
+table of addresses to be passed to Pygmy.  C allocates an
+array of bytes named loadbuffer, opens the file containing
+the Forth image (e.g. PYGMYC.COM), then reads the file into
+the loadbuffer beginning at an offset of $100 (as expected
+by a DOS .COM file).  Once this housekeeping is finished, C
+can call Forth as often as it wishes as long as it builds a
+"command line" at an offset of $80 into the loadbuffer
+array.  Typically, the first thing we do is pass the address
+of the table to Forth.
+
+     There are still a few details to tend to, both in the
+Forth kernel and in the C wrapper.
+
+Making the Forth Kernel a Subroutine
+
+     We play fast and loose with the stacks when fooling
+around interactively in Forth.  A minor underflow or
+overflow of Forth's data stack isn't usually a problem, but
+we don't want to screw up C's stack.  Therefore, upon entry
+to Forth, we carefully preserve the registers and C's stack
+pointer.  Then we set up private stacks for Forth in its
+single 16-bit segment.  We define #BYE to restore C's
+registers and stack pointer and do a long return to the C
+wrapper while passing back a return code.
+
+     We've got another question to decide.  Do we want to be
+required to execute the Forth from a C wrapper or do we want
+the option of executing it as a .COM file directly from the
+command line?  By leaving the original definition of BYE
+which returns to DOS and defining an alternate #BYE which
+returns from subroutine, we can use the same PYGMY.COM
+either as a Forth image inside a C program or as a
+stand-alone executable at the DOS command line.
+
+     The main changes to the kernel are
+
+   1. Set up 3 slots near the beginning of the image
+      (for saving the calling program's SS and SP
+      and for holding the initial Forth word to be
+      executed).
+
+   2. Save the registers upon entry.  This is necessary if
+      we wish to return to the C program, but doesn't hurt
+      anything if we return directly to DOS.
+
+   3. Force the other segment registers to have the same
+      value as CS.  Again, this is necessary if Pygmy is
+      called from C but doesn't hurt anything if Pygmy is
+      executed from DOS.
+
+   4. Define #BYE to return to C rather than to DOS.
+
+Let's take a careful look at the definition of boot.
+
+  CODE boot
+     HERE 8 + JMP,        ( jump over the next 6 bytes         )
+     0 ,                  ( first slot, at $102, for saving SP )
+     0 ,                  ( second slot, at $104, for saving SS)
+     0 ,                  ( third slot, at $106, for holding   )
+                          (   address of RESET                 )
+     PUSHALL,             ( save registers on C's stack        )
+     CS PUSH, DS POP,     ( copy CS to DS so that the three    )
+                          (   slots will be addressable        )
+     SS AX MOV,
+     AX $104 ) MOV,       ( save C's stack segment register    )
+     SP $102 ) MOV,       ( save C's stack offset register     )
+     PUSHF,  BX POP,      ( save interrupt status in BX        )
+     DS AX MOV,
+     AX ES MOV,           ( copy CS & DS to ES                 )
+     CLI,                 ( disable interrupts                 )
+     AX SS MOV,           ( copy CS to SS                      )
+     RSTACK #, BP MOV,    ( initialize return stack            )
+     DSTACK #, SP MOV,    ( initalize parameter stk            )
+     BX PUSH,
+     POPF,                ( restore interrupt status           )
+     $106 ) AX MOV,
+     AX JMP,              ( jump to RESET                      )
+  END-CODE
+
+The first instruction is an unconditional jump to skip over
+6 bytes, which are filled with zeroes.  These 6 bytes form
+the 3 slots to be used to save the calling program's stack
+pointer segment and offset (i.e. SS and SP) and for holding
+the address of the initial word for Pygmy to execute
+(typically RESET).
+
+     As PYGMY.COM is a .COM file, the image will be loaded
+at an offset of $100.  Since the jump instruction takes two
+bytes, we now know the addresses of the 3 slots: SP is saved
+in the first slot at address $102.  SS is saved in the
+second slot at address $104.  boot expects to find the
+address of the first word to be executed in the third slot,
+at address $106.
+
+     After the jump instruction and the 3 slots, the
+PUSHALL, macro pushes a lot of registers on C's stack, the
+value of CS is put into the other segment registers, and C's
+stack pointer registers are saved in the first two slots.
+Interrupts are disabled prior to setting up the Forth
+stacks, then restored to their previous state (enabled or
+disabled).  Finally, a jump is made to the address stored in
+the third slot, and we are away -- running Forth.
+
+     Similarly, we define a matching #BYE to restore the
+saved registers and do a far return back to C.
+
+  CODE #BYE ( returncode -)  ( use this for returning to C)
+    PUSHF,         ( put flags on stack for popping into AX    )
+    AX POP,        ( save interrupt status in AX               )
+    CLI,           ( disable interrupts while we change stacks )
+    $102 ) SP MOV, ( restore C's stack pointer register)
+    $104 ) SS MOV, ( restore C's stack segment register)
+    AX PUSH,       ( put saved flags back on the stack )
+    POPF,          ( restore interrupt status)
+    AX POP,        ( remove value AX saved by PUSHALL, in boot )
+    BX PUSH,       (  then replace it with return code)
+    POPALL,        ( restore C's registers except AX  )
+    LRET,          ( far return to C with return code in AX    )
+  END-CODE
+
+We can then return to C with a return code of zero by typing
+0 #BYE.
+
+     The macros PUSHALL, and POPALL, which simply push or
+pop a bunch of registers, remove some of the clutter from
+the new definitions of boot and #BYE.
+
+  ( extend assembler with some macros)
+  : PUSHALL, ( -) DS PUSH, ES PUSH, SI PUSH, DI PUSH, BP PUSH,
+    DX PUSH, CX PUSH, BX PUSH, AX PUSH,  ;
+
+  : POPALL, ( -) AX POP, BX POP, CX POP, DX POP, BP POP,
+    DI POP, SI POP,  ES POP, DS POP,  ;
+
+     The last block of the kernel is responsible for
+plugging the address of RESET into boot.  Previously, this
+was plugged directly into a move immediate instruction at 7
+bytes into the definition of boot.  We must change this 7 to
+a 6 to plug the address of RESET into the third slot in
+boot.
+
+     That does it, as far as the changes to Pygmy's kernel go.
+Regen a Pygmy kernel with 1 LOAD and you are done.  There
+are still a few additions needed to let Pygmy call the C
+functions, but they do not need to be part of the kernel.
+In particular, we need to be able to do a long call (an
+intersegment indirect call), so we add a definition for
+LCALL, to the assembler.  Then we define some macros and
+defining words to make it easy to access the C functions and
+variables from within Pygmy.  These will be shown later in
+an example of calling Borland graphics routines from Forth.
+
+Alignment
+
+     Under DOS, a .COM file is given its own 16 bit segment.
+All 4 segment registers (CS, DS, ES, SS) hold the same
+value.  The first $100 bytes of the segment are reserved for
+the PSP (Program Segment Prefix).  The actual executable
+code begins at an offset of $100 into the segment.  The
+first byte of the file is loaded at address (offset) $100,
+the second byte of the file is loaded at address $101, etc.
+
+     The way segment:offset addressing works in real mode,
+the physical address of the beginning of the segment must be
+evenly divisible by 16.  This is because the physical
+address of the start of a segment equals 16 times the value
+in the segment register.
+
+     When the C program allocates memory to hold the Forth
+image, it returns a pointer made up of a segment value and
+an offset.  We cannot be sure exactly which physical address
+will be returned.  (Actually, under the 'huge' memory model,
+we know the offset will be less than 16.)  If the offset is
+not zero (or at least divisible by 16), then the block of
+memory allocated by C is not on a segment boundary.  We must
+walk the pointer forward until we reach a physical address
+that is divisible by 16.  Once we have the physical address
+for the beginning of the segment, we convert the physical
+address to an equivalent SEG:OFF form where the offset
+portion is zero.  This is the beginning of the segment and
+is also the PSP.  We add $100 to this address to find the
+address into which we copy the PYGMY.COM image.  This is
+also the address C will use when calling Forth as a
+subroutine.
+
+     When DOS loads a .COM file, it forces all 4 segment
+registers to hold the address of the segment.  But, the call
+by C to SEG:0100 only forces the correct value into the CS
+register.  It doesn't alter the other 3 segment registers.
+Thus, we must copy the value in CS into DS, ES, and SS.  The
+earlier description of boot showed how we set up the segment
+registers.  The important point here is that the call C
+makes to Forth must use the correctly aligned address and
+the SEG:OFF form of this address.  The listing of lp.c, in
+figure 1, shows how we do this.  Note, this trickery is fine
+in real mode, but would require a different approach in
+protected mode.
+
+Memory Model
+
+     The C used in this project is Borland C/C++ version
+4.5, creating a 'huge' model DOS executable.  We pick huge
+instead of large so the C routines will set the DS register
+correctly upon entry, rather than assuming DS is already
+correct.  Since we want to devote an entire 16-bit (64
+KByte) segment to Pygmy, the large or huge model makes the
+most sense.  To match the huge model, we use a far return
+instruction (LRET,) when #BYE returns to the C program.
+
+How C Calls C Routines
+
+     C can call subroutines in various ways.  The default
+method in Borland C's huge model is to push the subroutine's
+arguments onto the stack from right to left, do a long call
+(intersegment call) to the subroutine, then clean up the
+stack after the subroutine returns.  For example, for a C
+function prototyped as
+
+         int add (int a, int b);
+
+upon entry to the subroutine 'add', the stack looks like
+this (2 bytes for each item)
+
+            value of b
+            value of a
+            segment of return address
+            offset of return address    <---- top of stack
+
+Thus, when Forth calls the same C subroutine, it must set up
+the stack the way C expects to find it.  If we define the
+Forth word 'add' to call the C subroutine 'add', we want to
+write the arguments in the same order.  That is, if the C
+prototype shows int a on the left and int b on the right,
+then from Forth we want to say
+
+           a b add
+
+and _not_ have to rearrange this to
+
+           b a add
+
+In other words, we want our stack effects comment in Forth
+to look like the C prototype, at least as far as the order
+of the parameters is concerned.  However, this puts the
+values on Forth's data stack in this order:
+
+            value of a
+            value of b
+            segment of return address
+            offset of return address    <---- top of stack
+
+We could fix this with a SWAP, if we only had two arguments,
+but such a solution becomes more awkward with more than two
+arguments.  The solution I have adopted is to push the
+arguments from the data stack to the return stack, then
+switch BP and SP so Forth's return stack becomes C's stack
+for the purpose of calling the C routine.  Thus, we easily
+reverse the arguments into the form expected by the C
+subroutine while preserving the readability of our source
+code.
+
+     We could define a separate CODE word in Forth, by hand,
+for every C routine to be called, but this would get rather
+tedious and error prone.  Instead, we create a special
+defining word to build these routines for us.  Then we can
+define the Forth words that call the C routines with a
+simple list of index values and counts of input and output
+arguments.
+
+     16-bit DOS C routines return zero, one, or two words.
+A 1-word result is returned in AX.  A 2-word result (such as
+a long int or a far pointer) is returned in DX:AX.  Forth
+needs to know how many words of result to expect, so these
+values can be pushed onto the Forth data stack.
+
+     Note that this describes the default calling
+conventions used by Borland C.  Other calling conventions
+are possible.  It is important that you make the Forth and C
+agree on the calling convention to be used.  An easy way to
+do this in DOS is to write a short program with a small
+dummy subroutine, such as
+
+      main (void) {
+          int j;
+          int test (int a, int b, int c);
+
+          j = test  (1, 2, 3);
+      }
+
+      int test (int a, int b, int c) {
+          return a+b+c;
+      }
+
+Then, compile and link this dummy program in the memory
+model you want to use (such as 'huge'), with debugging
+turned on.  Then, examine the assembly language produced.
+Bring up the program in the debugger and set a breakpoint at
+'test' and step through it instruction by instruction,
+examining the stack.  You will quickly see exactly how the
+parameters are passed.
+
+The Table
+
+     The table is simply a listing of the addresses of the
+subroutines and variables addresses in the C program (or in
+C libraries).  A C function name without the ending
+parenthesis marks returns the address of the function.
+Thus, in the following example, we do not need to put an
+ampersand before the function names.  On the other hand, a
+variable name returns the variable's value, rather than its
+address.  We must precede the names of variables with the
+ampersand in order to put the address of the variable into
+the table.  In the following example, j is a variable (an
+integer) and tst(), initgraph(), and closegraph() are
+functions.  Since we declare pointers to be an array of void
+pointers, we cast each address to be a void pointer.
+
+     void *pointers[] =
+     {
+          (void *) &j,                         // integer        0
+          (void *) tst,                        // function       1
+          (void *) initgraph,                  // function       2
+          (void *) closegraph                  // function       3
+     };
+
+Because we are using the huge memory model, each pointer in
+the table consists of a segment and an offset and has a
+length of 4 bytes.  We must pass the address of pointers to
+Forth.  Then Forth can look up the address for each of the
+items in the table.  The C program passes the address of
+pointers the first time it calls Forth.  Since Forth will
+attempt to INTERPRET the string at offset $80 in its
+segment, we place a string at that address which will set
+the 4-byte variable CTABLE to the correct value.  First, we
+build the string in forthstr using the sprintf function.
+Then, we move this string to address $81 in the Forth
+segment.  Then we plug the length of the string into address
+$80.
+
+     // install the address of the pointer table
+     sprintf(forthstr, " %d %d  CTABLE 2! \r",
+                     FP_SEG(pointers), FP_OFF(pointers) );
+     strcpy(commandline+1, forthstr);
+     commandline[0] = (char) (strlen(forthstr)-1);
+     exit_status = forth();
+
+Note that FP_SEG extracts the segment value from a far
+pointer and FP_OFF extracts the offset value from a far
+pointer.  Suppose in the above that the address of pointers
+is 0123:4567.  The above example would compose this string
+
+           291 17767  CTABLE 2!
+
+and place it where PYGMY.COM expects to find its command
+line parameters.  (Note that $0123 is 291 decimal and $4567
+is 17767 decimal.)  After that, Forth can access the
+addresses in the pointers array via the value of its CTABLE
+variable.
+
+Calling C Routines from Forth
+
+     To get the address of a C function or variable, we need
+to know its position in the table.  In the above example,
+the address of initgraph() has an index of 2.  Each entry is
+4 bytes long, so we get the address of the table and add 8
+bytes (2 times 4) to it and do an L@.
+
+     In this approach, we do not need to know the address of
+the function, nor even the address of the pointers table,
+when we define the Forth words that will call the C
+routines.  All we need to know are the indexes of the
+routines in the table.  We look up the actual address at run
+time.
+
+     It would make for a faster call if we knew the actual
+addresses at the time we define the Forth words.  This could
+be done by having the C program call Forth (probably once
+for each routine) with the address of each routine,
+extending Forth's dictionary.  The startup would be a little
+slower, but each call would be faster.  If this were done,
+the Forth code would not need to know the indexes of the
+items in the table.  Thus, the position of the functions in
+the table could be changed without needing to change the
+Forth.  While this can be faster, it is a little more
+complicated, so we will stick with the simpler method for
+now.
+
+     For each C routine to be called, we define a separate
+Forth CODE word with CDECL:.  In reading the definition of
+CDECL: note that the words that lay down assembly code end
+in a comma.  Thus, BX PUSH, lays down the code to push the
+BX register to the stack pointed to by SP, but PUSH without
+a comma is what most Forths call >R.  SWITCH, is a macro
+that lays down the code to switch the contents of Forth's
+data stack pointer and return stack pointer (it exchanges SP
+and RP).  This is handy because the hardware PUSH, and POP,
+instructions work only on the stack pointed to by SP.
+SWITCH, allows us to use PUSH, and POP, on either stack.
+PUSH-ARGS, is a macro that takes the count of input
+parameters and lays down the code to move each of the
+parameters from Forth's data stack to Forth's return stack.
+GET-RESULT, is a macro that takes the count of result values
+and lays down the code to move the result, if any, from the
+register(s) C uses to Forth's data stack.
+
+     The only tricky part may be keeping track of what is
+done at compile time when CDECL: creates a new Forth word
+versus what is done later at run time when the execution of
+that Forth word sets up the parameters in the form C expects
+to find them, does a far call to the C routine, then cleans
+up the stack and puts any result on Forth's data stack.
+
+     Pygmy's assembler doesn't have an instruction to do a
+far call (an intersegment indirect call), so code for the
+LCALL, instruction needs to be added to Pygmy's assembler.
+
+    [Note, as of version 1.7, Pygmy's assembler *does*
+     have the LCALL, instruction]
+
+Put the following definition on block 131 or so.  Some of
+the support words, such as R>M, are headerless, so the
+entire assembler must be reloaded.
+
+   : LCALL,   ( mem | reg  -)  1REG?  IF R>M  THEN
+      $FF C,  $18 OR modDISP,   ASM-RESET ;
+      ( eg   0 [BX] LCALL,  or   DX LCALL, )
+
+Accessing C Variables From Forth
+
+     We have a similar defining word for C variables.  CVAR:
+defines a Forth word that returns the seg offset address of
+the C variable.  All that needs to be known at compile time
+is the index value for the variable in the pointers array in
+the C program.
+
+The Table as Seen From Forth
+
+     The following Forth code uses CDECL: and CVAR: to
+define Forth words to access the C integer j and to call the
+C routines tst(), initgraph(), and closegraph().
+
+( Define the data structures and subroutines)
+( index  #in #out)
+      0               CVAR:  J              ( - seg off)
+      1    2    1    CDECL:  TST            ( a b - c)
+      2    6    0    CDECL:  initgraph      ( Ldrv Lmode Lstr -)
+      3    0    0    CDECL:  closegraph     ( -)
+
+     Note that the counts of input and output parameters are
+needed only for the functions and not for the variables.
+Also, the counts of input and output parameters are actually
+the number of 16-bit words involved.  For example, tst()
+takes two 16-bit integers and returns one 16-bit integer.
+On the other hand, initgraph() takes only 3 input
+parameters, but each is a 4-byte far pointer, hence the
+value 6.  Three 32-bit values is expressed as 6 16-bit
+values for the purpose of moving the values from Forth's
+data stack to C's parameter stack.
+
+Putting It All Together Graphically
+
+     The listings for BGI.SCR and LP.C show an example of
+how a C wrapper gives Pygmy access to Borland's BGI
+routines.  You can trade off which parts you put in the C
+wrapper and which parts you define in Forth.  For example,
+rather than keep track of the value of the manifest
+constants such as DETECT, TRIPLEX_FONT, and HORIZ_DIR in
+Forth, C variables are created and set to those values.
+Then Forth can access them via the pointers table.
+
+     gdriver  = DETECT;
+     textfont = TRIPLEX_FONT;
+     textdir  = HORIZ_DIR;
+
+Once the C wrapper turns control over to Forth, we can
+exercise the graphics routines from the keyboard.
+
+Summary
+
+     This is meant to be a quick answer to the question "How
+can I access C routines from Pygmy?"  It hasn't gone into
+the question of "Should this be done?"  It hasn't attempted
+to say what the best method might be.  If you need to access
+Forth from C or C from Forth, here is one way to do it with
+Pygmy.
+
+     I like the idea of being able to call Pygmy as a
+subroutine from another program as well as executing it from
+the command line.  I believe I will make this part of
+the version 1.5 I am working on.
+
+[ updated email, web, and Pygmy version below ]
+
+     My permanent email address is frank@pygmy.utoh.org.  Pygmy
+version 1.7 is available at http://pygmy.utoh.org.  It contains
+this file and lp.c, bgi.scr, bgi.dow in case you want to experiment
+with this.
+
+
+                          THE END

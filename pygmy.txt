@@ -1,0 +1,1877 @@
+
+                Pygmy Forth version 1.7 MANUAL
+             Copyright 1989-2007 Frank C. Sergeant
+                                 frank@pygmy.utoh.org
+                                 http://pygmy.utoh.org
+
+
+     Pygmy Forth version 1.7 is a fast direct-threaded Forth for
+reasonably compatible MS-DOS and PC-DOS machines.  This the DOS box in
+all versions of Microsoft Windows, FreeDOS, and the DOS emulator in
+Linux.
+
+     It includes an editor, assembler, and metacompiler (so it can
+recompile itself) in only 16K to 18K.  Up to 15 files can be open
+simultaneously.  It includes a multi-tasker and the ability to execute
+C library routines.  It comes with full source code and documentation.
+It is based loosely on Charles Moore's cmFORTH.
+
+    TABLE of CONTENTS
+
+              Chapter  1   Terms of use and distribution
+              Chapter  2   Pygmy Forth T-shirts
+              Chapter  3   Credit Where Credit is Due
+              Chapter  4   Why I Wrote Pygmy
+              Chapter  5   What Is Pygmy?
+              Chapter  6   How To Run The Program
+              Chapter  7   If You Are New to Forth
+              Chapter  8   What Was New With Version 1.2
+              Chapter  9   What Was New With Version 1.3
+              Chapter 10   What Was New With Version 1.4
+              Chapter 11   What Was New With Version 1.5
+              Chapter 12   No  Version 1.6
+              Chapter 13   What Is New With Version 1.7
+              Chapter 14   Tips
+              Chapter 15   How Files Work
+              Chapter 16   The Assembler
+              Chapter 17   The Editor
+              Chapter 18   The Metacompiler
+              Chapter 19   Vocabularies
+              Chapter 20   Additional Information
+              Chapter 21   How to Reach Me
+              Chapter 22   The Glossary and Index
+              Chapter 23   Memory Map
+              Chapter 24   Files
+              Chapter 25   Direct Threaded
+              Chapter 26   History and Philosophy
+              Chapter 27   How to Print the Source Code
+              Chapter 28   _Starting Forth_ Notes
+              Chapter 29   Multi-tasker
+              Chapter 30   C Library Routines, etc.
+              Chapter 31   The Kermit File Transfer Protocol
+
+
+Chapter 1        Terms of use and distribution
+
+     It is freely available for use and redistribution under a liberal
+BSD/MIT/X-style license.  See http://pygmy.utoh.org/license.html or
+the file license20040130.txt.
+
+
+
+Chapter 2       Pygmy Forth T-shirts
+
+     There are no more Pygmy Forth T-shirts.  When my girl friend was
+a child, she published a family newsletter_.  Her grandfather was in
+the sign and printing business and produced a cartoon that she put in
+one of the issues.  The cartoon shows her in a cannibal's stew pot
+saying "You can't do this to me, I'm the editor ...!"  and the
+cannibal, holding a shield and spear, replies "Don't worry missy, soon
+you be Editor in Chief."
+
+     At one time, she extracted the image of the cannibal to use as
+the logo for Pygmy Forth and had a few T-shirts made that say "Pygmy
+Forth" and show the Pygmy caricature from the cartoon in black, green,
+and brown.  Perhaps one day I will get that image as a png file and
+post it on the web site.  Don't hold your breath.
+
+
+Chapter 3       Credit Where Credit is Due
+
+     Pygmy Forth was inspired by cmFORTH for the NOVIX, a
+public domain Forth written by Charles Moore.  Much of the
+overall structure and specific high level code reflect this
+influence.  Some of the machine code, especially flag
+producing words, is tighter due to ideas suggested by Robert
+Berkey.  Wil Baden provided OF THENS.  The initial approach
+to handling files was suggested by Dennis Ruffer by his
+description of files in Forth Inc's polyFORTH.  Rob Chapman
+contributed the idea of (and how obvious when you think
+about it) having FOR NEXT do the loop <n> times instead of
+<n+1> times.  He also contributed a slogan that I've
+adopted: "It's so simple - it HAS to work."  Many other
+people, especially Ian Watters, Greg Lisle, Brad Rodriguez,
+J.E. Thomas, and David Zethmayr have offered suggestions and
+encouragement (and prodding) that have helped make Pygmy as
+pretty as it is today.  Thank you.
+
+
+Chapter 4          Why I Wrote Pygmy
+
+     Pygmy Forth's goals:
+          1. Fast, comfortable editor.
+          2. Reduced sized and complexity.
+          3. Inclusion of certain cmFORTH ideas:
+             a. PUSH POP (instead of >R R>)
+             b. FOR NEXT
+             c. no IMMEDIATE word
+                (but it does have words that are immediate)
+             d. simple Metacompilation
+
+     Pygmy includes
+         1. a fast screen oriented block editor
+         2. an 8088/8086 assembler
+         3. full source code
+         4. full metacompiler, easy to use
+         5. up to 15 files open and accessible at one time
+         6. default set of files opened automatically
+         7. FOR/NEXT, PUSH, POP, \, COMPILER vocabulary, and
+            other cmFORTH improvements
+         8. BIOS video calls for the best mix of speed
+            and compatibility.
+         9. optional direct video for fastest speed
+        10. vectored I/O  ( EMIT, KEY, KEY?, CR )
+        11. documentation (this file)
+        12. _Starting Forth_ compatibility hints for people new
+            to Forth
+        13. an experimental beginner's tutorial
+        14. VIEW for rapidly locating the source code for
+            a particular word
+        15. a relocatable dictionary
+        16. ability to make individual words or groups of
+            words headerless
+        17. ability to load from text files with FLOAD
+            and to mix and nest between LOAD and FLOAD
+            as deeply as you like
+        18. multi-tasker
+        19. PC serial port routines
+        20. Kermit file transfer protocol written in Forth
+        21. embeddable in C wrapper to allow Forth to use C
+            library routines and to allow C to call Forth
+        22. it runs on everything from a PC XT or palmtop
+            (HP95LX, HP100LX, HP200LX, Atari Portfolio,
+            etc.) to a DOS box any version of Microsoft Windows 
+            to DOS emulator in Linux.
+
+
+Chapter 5             What Is Pygmy?
+
+     Pygmy is one step on my path toward a "perfect" Forth.
+It runs on IBM PC/XT/AT and compatibles on DOS or a DOS box in
+either Linux or Microsoft Windows.  It is based (more and more
+loosely) on Charles Moore's cmFORTH for the NOVIX Forth chip,
+with many changes to allow it to run on a PC, and other
+changes as well.
+
+     cmFORTH was designed to run on a NOVIX connected by a
+serial line to a host terminal or computer that supplies
+editing and file storage services.  Therefore, cmFORTH does
+not include an editor.  Also, no assembler is needed
+because the NOVIX's assembly language is Forth (more or
+less).
+
+     Pygmy Forth includes an editor and assembler and still
+only takes up about 18K bytes fully loaded.  The kernel
+(without editor and assembler) is less than 10K.  Actually,
+you have quite a lot of control on just how big it is
+because you can customize the system just the way you like
+it.  It comes with complete source code, including the
+metacompiler, so it can recompile itself.  The metacompiler
+can also be used for compiling custom applications.  In this
+case you can eliminate the parts (such as the editor and
+assembler and various utilities) that the final application
+will not need.  And you can make words headerless to reduce
+the size of your final applications.  Regenerating the
+kernel (with 1 LOAD) takes about a second on an old Pentium
+90 MHz PC.  Then, extending it with the editor, assembler,
+multi-tasker, etc. with 5 LOAD takes about a second.
+
+     Pygmy is direct threaded with top of stack kept in a
+register.  It has a comfortable screen oriented block
+editor.  You can move quickly from block to block with the
+PgDn and PgUp keys, search across blocks, insert blank blocks,
+and compress out blank blocks, and switch between related
+blocks (for shadows or for comparing different versions of
+an application).
+
+     Pygmy allows 15 files open at one time.  These are all
+accessible "simultaneously" at different block numbers.  Your
+default files are opened automatically and the defaults can be
+changed, of course, and additional files can be opened. .FILES
+shows the file names and status.  The documentation shows
+examples of how to reset them.  If you need more than 15 files
+open at one time, there is supplemental code that shows how to
+have over 200 files open at one time.
+
+
+Chapter 6           How To Run The Program
+
+     Make a backup copy of the distribution disk, if you got
+it on a disk.  If Pygmy is distributed in a ZIP file, unzip
+the files into the directory of your choice.  For example,
+create a directory named "pyg" and unzip the files there, as
+in the following example:
+
+   C:\>md pyg                  ( create a directory named "pyg")
+   C:\>cd pyg                  ( change to that directory )
+   C:\PYG>copy c:\temp\pygmy17.zip .  ( copy the zip file to "pyg")
+   C:\PYG>unzip pygmy17.zip
+
+(use your favorite unzip program -- I use the InfoZIP version)
+
+    Then bring up Pygmy by typing
+           C:\PYG\>pygmy
+
+     All of the source code for the system, both the kernel
+and the extensions, is in the block file PYGMY.SCR.  The
+manual is a regular text file, PYGMY.TXT (the file you are
+currently reading), which is readable with LIST or nearly
+any text editor.  Another block file, YOURFILE.SCR, is
+provided for the source code you write.  It starts out with
+8 blank blocks and can be enlarged as much as you like with
+the Editor's F9 key.  Of course, you are free to create and
+use additional block files, but you do not have to do so in
+order to use Pygmy.
+
+     To read the source code, bring up Pygmy and then use
+Pygmy's editor to browse through the block file PYGMY.SCR.
+To start at the beginning, make sure Caps Lock is on, then
+type
+
+           0 EDIT    
+
+(end all commands by pressing <Enter>).  Then just start
+browsing with the PgDn and PgUp keys.  If you have the shadow
+blocks available, press Ctrl-A to switch between a source
+code block and its shadow.  To get out of the editor press
+Esc.  To get back in where you left off, type
+
+           ED
+
+   To skip to a particular block, press Esc to get out of the
+editor and then type n EDIT where n is the block you want to
+jump to.  To see what files are open, get out of the editor
+and type
+
+           .FILES
+
+   To see the source code for a particular word, type VIEW
+followed by the word's name, e.g.   VIEW EXPECT  or you can
+use the shorthand  V  .
+
+   If you get error messages when you try to open files, it
+probably means that your CONFIG.SYS file is not allowing
+enough files.  Change or add a "FILES=" statement to
+CONFIG.SYS so it says  FILES=20  or higher, then reboot and
+try again.  (As shipped PYGMY.COM tries to open only a few
+files automatically, so this should rarely be a problem.)
+
+   If your monitor works with DOS it should work with Pygmy.
+It accesses the video through BIOS calls.  However, the direct
+writes to video memory is much faster on old, slow computers.
+So, you can re-vector EMIT to use the direct writes instead of
+the BIOS if you wish.
+
+
+Chapter 7         If You Are New to Forth
+
+     The purpose of this manual is not primarily to teach
+Forth.  To learn Forth, work your way through the book
+_Starting Forth_ by Leo Brodie.  It may still be available
+from the Forth Interest Group or may be posted or the web
+somewhere.  Pygmy does not try to be compatible with _Starting
+Forth_ but there are a few notes in a later chapter about
+converting the _Starting Forth_ examples to Pygmy that may
+help.
+
+     Jump in and try to write some simple code.  See my
+experimental Tutorial article to see if it helps get you
+oriented.  Spend some time browsing the source code in
+PYGMY.SCR with the built-in editor.
+
+     As a Forth to learn with, Pygmy may have some
+advantages:  
+     (1) it doesn't cost much (it is free),
+     (2) the entire source code is included, 
+     (3) it is small enough and non-intimidating enough that 
+         you have a chance to grasp it,
+     (4) metacompiling, using Pygmy, is easy, 
+     (5) I am usually available to answer questions via
+         comp.lang.forth or email.
+
+     If you want to try it without a book, then read all of
+the documentation and read the source code as well.  Try out
+simple examples.  Browse the web for further examples.
+Previously, I recommended joining FIG and reading _Forth
+Dimensions_ but there are still the Internet, comp.lang.forth,
+various mailing lists, and local FIGs.  There is no substitute
+for doing your own experimenting.  The word VIEW is a great
+help.  To examine the internals of a word or data structure,
+use DUMP or DU.  Make heavy use of the source code and
+shadows.  The stack comments are most helpful, showing what
+goes into a word and what comes out.  You could even try the
+experimental tutorial I have included.  Print it out so you
+can work from a hard copy.
+
+
+Chapter 8        What Was New With Version 1.2
+
+Just the highlights:     
+
+   / does a signed division, truncating toward zero  
+     ( e.g.    -3  2  /  returns  -1  ) rather than flooring.  
+
+   U/   does an unsigned divide.
+
+   BOOT is DEFER'd to make it easy to customize
+( e.g. ' MYAPP IS BOOT ).
+
+   Fast DO LOOP are now available (courtesy of Robert
+Berkey).  [no longer included as of version 1.5]
+
+   TYPE ( a # -)  replaces the cmFORTH TYPE ( a - a').  I
+have also added  COUNT  and  -TRAILING to support it.  I
+like the cmFORTH TYPE ( a - a') but the ending address was
+only used in one or two places so I've changed this to TYPE$
+( a -).
+
+   NUMBER now understands hexadecimal literals such as $8000
+and $FF and ascii character literals such as  'A  'B  'z.
+
+   .S  
+
+   "   has been added for in-line string literals.  At
+compile time it compiles the following text up to the ending
+quote mark as a counted string.  It then commas in a zero
+byte, which is not included in the count.  The purpose of
+this is to make it easy to setup "asciiz" strings for DOS.
+E.g.  : TST  " this is a string "  TYPE$  ;
+
+
+Chapter 9     What Was New With Version 1.3
+
+     File handling has been overhauled.  Everything is now
+done relative to the unit# of the file.  See UNIT, SETTLE,
+CHOP, OPEN, ?CLOSE, etc. (but see additional changes in
+version 1.4, where the handle is used even more often).
+
+     ABORT is now a DEFER'd word, to make customizing
+applications easier.
+
+     For Leonard Morgenstern, NUMBER and LITERAL are now
+DEFER'd.  (This also makes adding the double and quad number
+extensions easier.)
+
+     (ONEKEY  is the default for KEY.  It returns a single
+value no matter what key is pressed, rather than a single
+value for some keys and two values for other keys, as DOS
+does.  I prefer the consistency of a single value.  You
+can still say  ' (KEY IS KEY  if you prefer the double code
+for special keys.  [in version 1.5, (KEY is the current
+name for what used to be (ONEKEY]
+
+     All the source code is now in a single (block) file.
+All the documentation is now in a single (text) file.
+
+     Metacompiling is even easier.
+
+     FILES now keeps track of the highest block # in the
+file.  Neither the editor nor BLOCK will go outside actual
+file bounds.
+
+     HOLES was added to editor (F9).  SETTLE and CHOP make
+managing block files more convenient.
+
+     Search across now always goes to end of file, no need
+to set the ending block number.  (But Esc key will abort
+the search.)
+
+     THRU no longer uses the data stack, so multi-block
+definitions which pass arguments on the stack during
+compilation can now be loaded with THRU.
+
+     Added N! ( n a - n) to store n into a, keeping a copy
+of n
+
+     Changed FOR/NEXT so 0 FOR ... NEXT goes through the 
+loop zero times and u FOR ... NEXT goes through the loop u times.
+
+     ABORT" now includes the IF.
+
+     Added +UNDER ( a b c - a+c b).
+
+     Added NIP ( a b c - a c).
+
+     Straightened out the redundant EXIT.  
+
+
+Chapter 10      What Was New With Version 1.4
+
+     Some of the following words are optional extensions and
+are not in PYGMY.COM until you LOAD them.  See blocks 139-141
+[in version 1.7 see blocks 140-142] for information on loading
+these extensions.
+
+     "  can now be used outside definitions as well as
+within.
+
+     FILE handling has changed and/or improved in several
+directions.  Check _all_ your code for compatibility with
+the new file handling words.  We can now open a file inside
+or outside of definitions with a string literal (or a named
+string as before) " FILE17.SCR" 4 OPEN  which beats the
+cumbersome process of v1.3.  Files are now opened by
+specifying the name and the unit number.  The number of the
+first block of each file is the unit number times one
+thousand, e.g.  0, 1000, 2000, 3000, etc.
+
+The following words now take a handle instead of a unit#:
+  LBLK  >EOF  >BOF  FCLOSE  POSITION@  >POSITION  +POSITION
+  FILE-READ  FILE-WRITE  MORE  FILE-SIZE  SET-FILE-SIZE
+
+FOPEN and FMAKE take an asciiz counted string and return a
+handle and flag, e.g.  " T1.TXT" FOPEN  from inside or
+outside of a colon definition.
+
+The following words still take unit#:
+     ?CLOSE ?OPEN OPEN? EXISTS? MAKE ?MAKE
+
+Thus there is no longer a need for HANDLE-WRITE, etc.  I
+think this factoring is more flexible and will let us do
+anything we want to do with DOS files.  The above form the
+basis for a text file loading facility, which is optionally
+loaded, or not, at metacompile time.  I'd like to please
+those who really want to be able to load source code from
+text files while not penalizing those who only want to load
+from blocks.  The main words are
+
+  READ-LINE ( - a #) 
+  FLOAD ( name -)              e.g.  " FILE3.TXT" FLOAD
+  INCLUDE ( <file-name> ( -)   e.g.  INCLUDE FILE3.TXT
+
+they use various auxiliary words such as 
+  FIB  ( holds addr of file input buffer)
+  #FIB ( holds length of text string in file input buffer)
+  >FIN ( holds offset from start of text file)
+  FBLK ( holds handle number for active text file)
+  FIBH ( holds handle number that matches contents of FIB)
+
+This system allows virtually unlimited nesting in any
+combination of block and text file  LOAD and FLOAD and
+INCLUDE.
+
+Restrictions on contents of text files:  They are expected to
+contain lines of no more than 132 characters [as of version
+1.5, this can be changed -- see block 2], which end in CRLF
+($0D $0A).  Single words may not cross line boundaries.
+Paren type comments ( such as this) would be fine as long as
+the parens are paired on the same line.  However I am adding
+a slightly different definition of left paren (as an
+extension) which will allow multi-line comments, such as
+
+(  This is a multi-line 
+   comment because the ending paren 
+   is not on the same line as 
+   the beginning paren.) 
+
+All control characters in the file buffer (after
+partitioning it by CRLF pairs) are converted to spaces.
+Thus, there is no special requirement as to whether the file
+ends in Ctrl-Z, etc.  Even though lines are expected to end
+in CRLF pairs, there is no problem if the CRLF is missing
+from the final line of the file.
+
+There is now a #TIB which is analogous to #FIB.  QUERY can
+be used to gather text to be WORD'd (a simple #TIB OFF at
+the end will keep INTERPRET happy; no more having to fool
+with SPAN and >IN) and now EXPECT can be used without
+disturbing INTERPRET since the #TIB function has been
+separated from SPAN, thus no need for $INPUT, but I have
+added #INPUT as an extension.
+
+Text file loading does not involve the unit# table and
+neither does SAVEM or SAVE, so the need for UN-UNIT (or its
+newer name RELEASE) goes away as well (or so I think).
+
+I have improved TXT>BLK which _creates_ a block file from a
+text file, and BLK>TXT which _appends_ a range of blocks to
+the end of an already existing text file.  (I think only one
+of the words was in version 1.3, and that it was much
+slower.)
+
+Conditional compilation:
+
+I have added   .IF ...  .ELSE  ...  .THEN    and  ?LOAD  to
+the metacompiler for conditional compilation (e.g. to allow
+the constant TFILES to control whether to load the text file
+words or just the plain block words).  Don't nest the .IF
+etc.
+
+  -1 CONSTANT TFILES   ( true if text files are desired)
+  TFILES .IF   73 75 THRU  .ELSE  76 LOAD  .THEN
+
+View Fields and Headerless Words
+
+I've been going up and down and back and forth on this.  At
+first I made view fields a metacompile-time option; once set
+the system always had view fields or never had view fields.
+I also allowed headerless words with Ian's suggested |
+symbol preceding the word to be made headerless, but only
+during metacompilation.  I didn't want users burdened with
+view fields if they didn't want them, or if space was too
+tight.  However, I decided if I was going to have headerless
+words at all then I hated not to be able to behead the
+various editor support words.  So, I decided to allow
+headerless at anytime.  That eases the burden that view
+fields might cause, as space can now be saved, if necessary,
+by making certain words headerless.  I was torn over whether
+to use | which is compact but has to be used for every word
+you want headerless, or to use  HEADERS OFF ... HEADERS ON
+to bracket an entire section that is to be made headerless.
+I finally compromised by allowing both.  And, they can
+co-exist without trouble.  If either HEADERS are OFF or if a
+word is preceded by | then the word will be headerless,
+otherwise headerful.
+
+This means we need PRUNE and { and } in the kernel, not just
+in the metacompiler.  The two versions do different things.
+The alternate dictionary must be established before using
+headerless.  Currently the word SET-EDGE sets up H' and
+remembers its initial value.  EDGE refers to the edge of the
+world that the headerless words' headers fall off of.  I'm
+open to suggestions for better names.  Care to suggest a
+decent name for this?  PRUNE resets H' from EDGE, and is
+included in SAVE, because an unpruned dictionary with
+headers over the EDGE would be useless if reloaded.  Note:
+as shipped, EDGE is set to $C000.  Be sure not to let the
+dictionary grow above this value if you have any unPRUNE'd
+headers present.  (If you define any headerless words, PRUNE
+before HERE gets to $C000, or do SET-EDGE to set the EDGE to
+a higher value.)
+
+Using this headerless feature has allowed most of the editor
+and assembler support words' headers to vanish.
+
+EMIT and video words
+
+v1.3 did direct video writes for speed.  On occasion this
+caused problems on slightly non-IBM-compatible computers
+(such as the AT&T 6300 (or whatever number it was).  v1.4
+has changed to doing EMIT and related words with BIOS Int
+$10 calls.  This should greatly increase compatibility and
+should still be fast (providing no TSRs such as NEWKEY get
+in the way and slow things down).  [Note, June '97, the BIOS
+EMIT is not fast enough on XTs, so you probably will want to
+revector EMIT to a direct write version.]
+
+     As before, most of the I/O words are vectored, so you
+still can replace any routines with ones of your own. The
+need for system variables CUR, VID, and CRTC goes away.
+[well, see the direct EMIT code in the extensions]
+
+     Also, these low level words such as (EMIT, (CR, (KEY
+now have any ending parenthesis removed, so as not to
+accidentally end comments.
+
+     ATTR is still used, but with a difference.  In v1.3,
+this value was merged with every character written to the
+screen.  Also, the attribute byte was kept in the most
+significant byte of the variable ATTR (to make the merging
+simpler).  Now ATTR holds the attribute in the least
+significant byte.  So, if you had used  $7100 ATTR ! to make
+a pretty dark blue on light blue screen, you will need to do
+$71 ATTR !  2000 .ATTR or  $71 ATTR ! CLS instead, with
+v1.4.  Now the attribute is only combined with characters by
+the word .ATTR.  See .ATTR below.
+
+     Summary of video words:
+
+   (AT  ( row col -)   positions the cursor.
+                       It is usually what AT uses.
+
+   (CUR@  ( - row col) fetches current cursor position
+                       (so you can save it and later
+                       restore it).  It is usually
+                       what CUR@ uses.
+
+   (EMIT   ( c -)      Writes a byte to the screen at the
+                       current cursor position and advances
+                       the cursor, using a BIOS Int$10
+                       teletype style video write.  Scrolling
+                       is done automatically at bottom of
+                       the screen.
+
+   AT@     ( - aacc)   Reads the character and attribute
+                       byte of the character on screen at
+                       the current cursor location.  The
+                       most significant byte is the
+                       attribute and the least significant
+                       is the character.  Use 255 AND to
+                       isolate the character, or use 256 U/
+                       to isolate the attribute.
+
+   .ATTR   ( # -)      Writes the specified number of blanks
+                       to the screen, applying the value in
+                       ATTR to each one.  This starts at the
+                       current cursor location but does
+                       not change the position of the
+                       cursor.  For example, this is used by
+                       (CLS to clear the screen and set the
+                       attributes of all the screen
+                       positions at once.  These attributes
+                       will remain in effect until changed
+                       again by .ATTR (or some word that
+                       uses it, such as (CLS ).  So, if you
+                       want to write a field with a
+                       different attribute (e.g. blinking,
+                       or a different color), you first need
+                       to set ATTR to the new attribute
+                       value (e.g. $BBFF ATTR !) and then
+                       write the text of the field, e.g.
+
+        ATTR @       ( optionally save current attribute)
+        $71 ATTR !   ( dark blue on light blue background)
+        25 .ATTR     ( clear a field 25 characters wide)
+        ." This is the new text"
+        ATTR !       ( optionally restore previous attribute)
+
+   (CLS   ( -)        Clears the screen by writing 2000
+                      spaces, using the current attribute
+                      (in ATTR).  Note, this could be
+                      changed if you have a larger or
+                      smaller screen than 80 x 25.  It is
+                      usually what CLS uses.
+
+     This set of BIOS video words is more than the bare
+minimum we might get by with.  For example, CLS could be
+done with 25 carriage returns.  Then we would not need .ATTR
+or AT@.  (AT@ is used in (BOOT to set ATTR to whatever
+attribute is currently in use at position 0 0 when the v1.4
+is invoked.)  But, then, you could not change attributes and
+so could not underline or reverse fields, or change colors,
+etc.  Also, AT is now in the kernel in v1.4 but was not in
+v1.3.
+
+     In addition to these words, two more BIOS video words
+are included in the unloaded (extension) section:
+
+       SCROLL-UP ( row col row col #lines attr -)
+
+       SCROLL-DOWN ( row col row col #lines attr -)
+
+                 These scroll the text the specified number
+                 of lines, and blank the new lines at either
+                 the top or bottom.  All of this is done
+                 only in the window specified by the upper
+                 left row and col and the lower right row
+                 and column.
+
+     I have added various additional words in the extension
+section, including COLORS.  Load it, if it is not already in
+the PYGMY.COM, and try it out.  You can set the color by
+storing the correct numbers into ATTR, but you might want to
+use words such as BLUE ON-BLUE or RED ON-YELLOW or BLINK or
+UNDERLINE or REVERSE, etc.
+
+     QUIT restores EMIT to whatever is in DEFAULT-EMIT.
+
+     Pygmy no longer tries to guess what type of video
+display is present.  When it wakes up, it sets the cursor to
+top left, fetches whatever attribute byte is already there,
+and uses it thereafter unless you change it.  So, if you
+have a color screen at the DOS prompt, and like those colors
+(or don't like them), they should be the same colors in
+Pygmy.  If you don't like those colors, say   $1F ATTR ! CLS
+or  $71 ATTR ! CLS  and see if you like those colors better.
+Also try the word COLORS that lets you step through various
+possibilities of foreground and background colors by
+pressing the F1 and F2 keys, as mentioned above.
+
+Miscellaneous 
+
+     CONDENSED (for use in printing blocks 6 per page in
+SHOW2) is currently set for a HP Laser Jet.  See the load
+blocks if you want to change this for other printers.  To
+check its setting, just type SEE CONDENSED  (as SEE now
+handles DEFER'd words).
+
+     DUMP and DU save the base, display in HEX, then restore
+the base.  As DU does multiple DUMPs, and I can give it a
+huge count and interrupt it with a keypress, I rarely need
+to follow DU with another DU or DUMP.  So, DU no longer
+leaves the next address on the stack.
+
+     BYE now does FLUSH before exiting.
+
+     Constants set the data and return stack initial
+addresses, so if you want to change the sizes you only need
+to make the change in a single location.  In addition, there
+is a constant STACKSEG which should ordinarily be set to
+either 0 or to 1.  If STACKSEG is 0 then the data and return
+stacks will be in the same 64K segment that contains the
+rest of Pygmy.  If STACKSEG is 1 then the data and return
+stacks will be in the 64K segment above the 64K segment
+which contains the rest of Pygmy.  I've added the constant
+TOP so the location of the disk buffers and input buffers can
+be customized (for those attempting to minimize the RAM
+Pygmy occupies when running).  Note that I have set up the
+data and return stacks to use their own segment and each has
+about 32K of room.  If you switch back to using stacks in
+the same segment as the rest of Pygmy be sure to alter the
+stack offsets accordingly!  All of this is now done easily
+by setting options at the beginning of PYGMY.SCR; see the
+load blocks.  [version 1.5 has returned to putting the
+stacks in same segment containing the rest of the code]
+
+     SEE now shows what DEFER'd words are deferred to, very
+handy!  Now that we allow headerless words and are using
+RECOVER and have view fields (and if all else fails we have
+the search across blocks facility) the former SEE has been
+discontinued and the new SEE's only function is to show
+where a DEFER'd word is pointing.
+
+
+The Editor
+
+     v1.3's editor on pretty-thoroughly-IBM-compatible
+computers has been a joy for me to use.  However, it has not
+been very easy to convert to other (dare I say "weird")
+hardware.  So, I have re-written the editor slightly so it
+keeps its hands off the video except through properly
+DEFER'd words, rather than trying to write to the video
+memory directly.  So, if you can make versions of CLS, AT,
+CUR@, and EMIT that work on your machine, and if your screen
+has enough rows and columns, you should be able to get the
+full screen editor working on your machine.  ED and PgDn and
+PgUp no longer restore ins/overwrite to overwrite, thus the
+setting stays the way you left it, unless you say EDIT.
+
+     The system variable CURSOR has been renamed to EBLK.
+It is used by the editor to keep track of the beginning
+address of the block buffer that holds the block being
+edited.
+
+     I have added a shadow facility to the editor.  Ctrl-A
+switches between related blocks.  Alt-A sets the current
+block as one of the two base blocks.  The default, if you do
+not set any base blocks with Alt-A (or if you set them both
+to the same block), is to consider that alternate thousands
+are related  (0 and 1000, 1 and 1001, etc. or 2001 and 3001,
+2002 and 3002).  That's why I have moved YOURFILE.SCR to
+2000, to leave room at 1000 for the Pygmy shadow blocks (see
+Bonus Disk) that match PYGMY.SCR at 0000.  Do Alt-A on the
+two blocks you want to compare and then hold down Ctrl-A to
+see the difference ("flickering" as described by Dick
+Miller).
+
+
+NUMBER
+     
+     I want NUMBER ( a - n), which takes a counted string,
+to become NUMBER ( a # - n), which takes an address and
+count.  I have compromised.  I added (SNUMBER ( a # - n) and
+left SNUMBER and NUMBER as ( a - n).
+
+
+Text Files
+
+     They are nestable to any level and in any combination
+with LOAD.  Use " <filename>" FLOAD for postfix or use
+INCLUDE <filename> for prefix.  At the moment the length of
+any one text file is limited to 64K.  Setting a single
+constant in the metacompiler to true or false determines
+whether the text file code will be included in the kernel.
+That way, non-users of text files do not have to suffer the
+extra overhead.
+
+                       
+EXPECT
+
+     I fixed a bug in EXPECT that was pointed out by Steve
+Birrell, whereby it wouldn't let you type the full length if
+backspace-deleted characters took up some of the room.
+EXPECT can now be used without concern for resetting SPAN or
+>IN as it no longer disturbs the terminal input buffer.  See
+QUERY when you want to get some input and use WORD on it.
+
+MS
+
+     v1.4 now has a (more or less) machine-independent
+timing word, MS, in the extensions.  This reads Timer 0 to
+tell when it has killed approximately the requested number
+of milliseconds.  Since loop speeds will vary among
+different speed machines, there will still be some slight
+variation.  Feel free to customize the count value to tune it
+exactly for your specific machine if you wish.
+
+>STD 
+>DOS
+
+     The BIOS video EMIT words cannot be redirected (via the
+command line).  Unloaded optional words culminating in >STD
+and >DOS can be redirected, although they are slower for
+screen use than (EMIT etc.
+
+added FILE-SIZE ( unit# - ud) 
+
+I switched code for 0< to that suggested by Andrew McKewan
+
+Fixed error pointed out by Greg Lisle in XREF (and made it
+prettier?).
+
+I put in a regular FORGET
+
+I added text file INCLUDE (which uses text file FLOAD)
+
+VIEW, HEADERS, and |
+
+     Basically, as Ian Watters suggested, I have added VIEW
+fields and the capability of making headerless words.  The
+word | preceding a definition marks that one word as
+headerless.  Some posting on GEnie requested that words
+reading the input stream be factored so a version is
+available that takes a pfa (e.g  : VIEW ( -) ' (VIEW ;  ),
+however I have not done it that way.  Instead, I've provided
+the word VFA so if a non-input stream version is needed,
+just ( pfa) VFA @ and then do whatever you want with the
+block number.  If the view field is zero then the word was
+compiled from the keyboard (or a text file).  VIEW simply
+terminates in this case.  You can uncomment the code to have
+it print an error message if you wish.
+
+More details: HEAD is factored out of CREATE, the "pfa" of a
+headerless word contains the magic byte $D6 [named NONESUCH in
+version 1.7], which won't ever appear as a machine opcode,
+followed by the value of the real pfa.  cmForth set the msb of
+the count byte.  The magic byte method costs an extra byte for
+every headerless header, but saves time in (-FIND on every
+compare when traversing the dictionary).  The headerless
+headers don't disappear until the word PRUNE is executed.  The
+word | preceding a word's definition makes that one word
+headerless.  Pygmy has always had the ability to compile
+utilities out of the way in higher memory and then use them to
+compile words into the lower dictionary area.  However, it
+takes PRUNE to cut those high words out of the dictionary when
+you are through with them.  The PRUNE version of the
+metacompiler will not work for this except when metacompiling,
+hence a new version for regular use.
+
+By the way, the $D6 magic byte comes from Ian as a byte that
+does not appear as an opcode in the '386 or lower.  Looking
+in a '386 book it looks like we could also use $F1 or $82
+for this purpose.
+
+I tried out a high-level -FIND and it was about 8 times
+slower than the code (-FIND.  So, we'll stick with the code
+version for now.  Now (-FIND has become -FIND (ie no longer
+DEFER'd); ditto for (WORD and WORD.
+
+RESET and reset in version 1.3 have now been consolidated
+into RESET.
+
+A one byte INT3, has been added to the extensions (for Ian
+Watters) [as of v1.5, it is in the assembler].
+
+At Greg Lisle's suggestion I have changed OPEN so it takes a
+unit number instead of a starting block number.  Also, I
+have renamed F# which converts a block number to its
+corresponding unit# to >UNIT#.
+
+SHELLing out to DOS and the ability to read command lines
+passed from DOS have been included as extensions.
+
+
+Chapter 11      What Was New With Version 1.5
+
+     Multi-tasking
+
+     Command line execution
+
+     Improved SHELL and EXEC documentation
+
+     RP! and SP! take values from stack now
+
+     Embeddable within a C wrapper
+       (see the article)
+
+     Kermit file transfer protocol
+
+     New serial port routines
+
+     Direct video EMIT available in the extensions.  Use this
+if the BIOS EMIT is too slow on your machine.  To use it,
+remove the appropriate left paren on block [or near] 141 so
+that, when extending the kernel, 5 LOAD will load the direct
+EMIT.
+
+
+Chapter 12      No Version 1.6 
+
+     Version 6 was used for some client work but was not
+generally released.
+
+
+Chapter 13      What Is New With Version 1.7
+
+     Various minor changes to the code.  
+
+     New (even more liberal) license.
+
+     Shadow blocks included with the distribution (no more
+"bonus" disk).
+
+
+
+Chapter 14                 Tips
+
+     Set Caps Lock on.  Most words must be typed in UPPER
+CASE.
+
+     To abandon changes you have just made in the editor,
+use Esc to get out of the editor then type   EMPTY-BUFFERS
+
+    ?SCROLL  is embedded in WORDS and DU to let you halt
+the display by pressing any key (except Esc).  Press any key
+again to start it up again (except Esc).  To bail out,
+whether you are scrolling or paused, press Esc.  You can also
+put ?SCROLL into your own words.  For my tastes, this is
+very much better than the common practice of aborting when
+you press the <Enter> key.  However, with the much faster
+computers of today, a theoretical ability to halt a listing of
+the words by pressing a key is not as useful because the
+listing may be finished before you can hit the key.  One
+possibility would be to put a delay into CR or ?SCROLL or
+WORDS. 
+
+    DUMP ( a - a')  and DU ( a # -) allow you to inspect
+memory.  DUMP dumps one line and leaves the address of the
+next line ready for typing DUMP once more.  DU repeats DUMP
+for a number of lines, dropping the final address.  ?SCROLL
+is built in, so feel free to type  0  2000 DU  (you can get
+out of it with Esc, or pause with any key).
+
+    .FILES ( -) shows the files that are currently open and
+the block numbers associated with them.  You can open ANY
+type of file; you are not limited to Forth style BLOCK
+files.
+
+     The word ." works either inside or outside of colon
+definitions.  There is no need for the abomination  .(
+(Actually there are two words named  ."  one is in FORTH and
+the other is in COMPILER.)  Similarly  "  can be used inside
+or outside definitions for creating a string literal.
+
+     Pygmy recognizes $xxxx as a hex number (e.g.  $2000
+$FE  $03F8) and it recognizes character literals as well
+(e.g. 'A 'B  'C  'z).  The hex literals are a great
+convenience and allow us to stay in DECIMAL more of the
+time.  The character literals allow us to avoid the ugly
+CHAR and [CHAR] or ASCII and [ASCII].
+
+     NOT inverts the truth value on the stack.  It is
+equivalent to 0=.  If you want to invert each bit
+individually, use  -1 XOR
+
+     Do not blindly convert a block file to a text file
+and expect to be able to load the text file.  In
+particular, LOAD resets the base to decimal, thus you can
+change the base to HEX in a block and have that apply only
+to the current block.  When converting to a text file, you
+will need to change the base back to DECIMAL explicitly, as
+appropriate.
+
+
+Chapter 15           How Files Work
+
+     Pygmy can access a number of files "simultaneously".  As
+shipped, it contains 15 slots or units for files, stored in
+the FILES array.  I often refer to this as the unit# table.
+This can be changed to a smaller number if you wish.  If you
+must access more (perhaps over 200 files; but it probably does
+not make sense to open more than 15 if you expect to access
+them via BLOCK), that can be done also, and sample code is
+included in PYGMY.SCR.  1000 blocks are reserved for each
+unit#.  The highest block number that can be used is 32766.
+Block number 32767 is a dummy block number used when FLUSHing
+blocks back to disk.
+
+     Before you can access a file (as a block file), it must
+be installed into one of the slots.  This is done by the
+word OPEN or by the word UNIT.  UNIT establishes the file's
+name (as it is known to DOS) and starting block number.
+This name can include the full path, including drive, for
+those cases where the file is not in the current directory.
+The parameters for OPEN or UNIT are the filename and the
+unit#.  The unit# will then determine the starting block
+number.  The starting block number will always be 1000 times
+the unit#.  Thus the file in unit# 0 starts at block 0, the
+file in unit# 5 starts at block 5000, etc.  The filename is
+the address of a counted string that ends in a zero byte
+(for the DOS "asciiz" format).  There are several ways to
+define the name.  Previously I used the word NAMEZ: which
+defined a word whose name is the string.  For example,
+
+             NAMEZ: YOURFILE.SCR
+
+but now I generally just use a string literal, e.g. 
+
+            " YOURFILE.SCR"  2000 OPEN
+
+   Once you have installed the file with UNIT or with OPEN,
+you can open and close the file repeatedly just by using the
+unit#.  To replace that file in a particular slot in the
+unit# table, just open another file at the same unit#.  The
+file that was previously in that unit# will be closed
+automatically before the new file is opened.  You might want
+to type FLUSH before opening the new file.
+
+     As shipped, Pygmy version 1.7 has three files that are
+already installed in units 0, 1, and 2.  These are PYGMY.SCR,
+which contains all the source code, PYGMY.DOW which contains
+the shadow blocks (comments), and YOURFILE.SCR, which contains
+8 blank blocks.  These are automatically opened for you and
+ready to go.  YOURFILE.SCR is provided so the new user of
+Pygmy has a block file ready to hold his own source code.
+
+     Any time you want to see which files are installed in
+units, whether they are open, or what their starting block
+numbers are, type
+
+             .FILES
+
+     You are not limited to these files.  Close them all
+down with RESET-FILES if you like, and open your own set.
+If you save that image of PYGMY  (eg  SAVE TST1.COM),
+whenever you bring up that image (by typing TST1 at the DOS
+prompt) your custom set of files will be opened for you
+automatically (and the list of names and starting block
+numbers will be displayed).
+
+     Each block in the entire system of open files has its
+unique number.  There is no need to use the F83 OPEN/FROM
+CONVEY.  There is no need for OFFSET.  To copy a range of
+blocks, whether to and from the same or different files,
+just say  ( from to #) COPIES   e.g.
+
+             17  300  50  COPIES
+
+to copy the 50 blocks starting at block 17 to the 50 blocks
+starting at block 300.  It is an error if those blocks do not
+exist.  To extend a file, either use the word MORE or use F9
+from within the editor.  It does not work quite like the MORE
+of F83.  If the file is not empty, the easy way to extend it
+is to get in the editor and move to the last block and use the
+F9 key (which does MORE for you).  For copying a single block
+you can still use COPY.
+
+For creating a new block file from within Pygmy, see NEWFILE
+in the extensions.
+
+
+Chapter 16              The Assembler
+
+     The 8088/8086 assembler in Pygmy is a regular Forth
+postfix assembler.  For examples of how it is used, browse
+through PYGMY.SCR.
+
+     Begin a code word with CODE and end it with END-CODE,
+e.g.
+
+         CODE DUP    BX PUSH,   NXT,   END-CODE
+
+     Except in special cases (and then you know what you are
+doing) code words must perform next somehow.  In Pygmy, this
+code is laid down in-line (by the word  NXT,) rather than by
+a jump to a central next routine.
+
+     If your routine disturbs CS, DS, BP, SP, SI, or BX it
+must restore it.  The direction flag must be left clear.
+
+     BP points to the return stack.
+
+     SP points to the data stack.  The top (data) stack item
+is kept in BX rather than on the actual stack.  See example
+above for DUP.
+
+     SI is Forth's IP register.  AX is Forth's W register,
+but you may use it freely without restoring it.
+
+     The assembler words generally end in a comma, signaling
+they actively "comma" data into the dictionary.  This is
+useful for another purpose: as the assembler words and the
+regular Forth words all sit in the same vocabulary (FORTH),
+the comma helps distinguish between similar words, e.g. THEN
+versus THEN,
+
+
+     It is a "structured" assembler with
+     
+    <set-codes> <condition>
+    IF,   XXXXXX    ELSE,   YYYYYY   THEN,
+
+and
+
+     XX #, CX MOV, BEGIN,  XXXXX  LOOP,     
+
+etc.
+
+     If it is not clear from the instruction whether the
+operand is a byte or a word, a byte is assumed.
+E.g.   0 [BX] SHL, would shift only a single byte.  To
+override this, use W-PTR  e.g.
+
+     0 [BX] W-PTR SHL,
+     ( shift word at 0[BX] based on count in reg CX)
+
+     For the shifts and rotates, if an immediate operand
+precedes it, it shifts a single bit, e.g.
+
+   1 #, AX SHR,   ( shift AX right one bit right)
+or even
+   300 #, AX SHR, ( shift AX right one bit, not 300 bits)
+
+     If you want it to shift based on the contents of CL,
+omit the immediate operand, e.g.
+
+    4 #, CX MOV,  AX SHR, 
+
+examples to shift right 1 bit:
+
+     1 #, SI SHR,  
+     1 #,  W-PTR  17 [BX] SHR,  
+     1 #, AL SHR,
+
+examples to shift right the # of bits in CL
+
+     SI SHR,
+     AL SHR,
+     1300 ) SHR, 
+     3752 W-PTR  ) SHR,
+
+IN, and OUT,  (reading and writing I/O ports)
+
+use  
+      port #, AL IN, 
+or
+      port #, AX IN, 
+for 8 bit ports
+
+or 
+      AX IN,   if the port number is the DX register. 
+
+Do not use    AL DX IN,  as the DX is implied.
+
+
+JMP,  CALL,  LJMP,  LCALL,
+
+See pygmy.scr for examples of use (in the editor, search
+for 'CALL,' or 'JMP,' etc.)
+
+     The instruction that does a bit by bit complement is
+called NOT by Intel, but in _this_ assembler it is called
+COM,.  This assembler uses NOT, to invert the test at the
+beginning of an IF,   e.g.
+ 
+      CS, IF, ( do if carry set)      THEN,
+or  
+      CS, NOT, IF, ( do if carry not set)  THEN,
+
+     The full source code for the assembler is present in
+the file PYGMY.SCR.  Some examples are included along with
+the source code.  In addition, you can browse the code of
+Pygmy's primitives for examples of how to use the assembler.
+The general rule is that the operand(s) come first followed
+by the opcode mnemonic (which ends in a comma).  With two
+operands, the source comes first and the destination second,
+like god meant it to be.  E.g. BX AX MOV,  lays down a move
+instruction to copy the contents of register BX into
+register AX.
+
+     The words << and >> show the actual bytes assembled by
+the assembly language between them, e.g.
+
+     << BX AX MOV, >>
+     49ED  8B C3  ok
+
+where '49ED' is the address in the dictionary where BX AX MOV,
+was assembled (that is, $49ED just happened to be the address
+of the next free byte in the dictionary) and '8B C3' are the
+two bytes that were assembled.
+
+
+Chapter 17              The Editor
+
+                     Editor commands:
+
+   To enter the editor, type  n EDIT.  To get out of the
+editor, press the Esc key.  When you are in the editor you
+can make changes by using the arrow keys to position the
+cursor and then just typing.  Press the INS key to switch
+between the insert and the overwrite modes.  The backspace
+key will delete characters to the left of the cursor and the
+Del key will delete the character the cursor is on.  Inserts
+and deletes generally occur only on the current line.
+
+   The PgUp and PgDn keys are used to move to the previous or
+next block.  If the cursor is at the beginning of the line
+already, Home moves to top of screen; otherwise, Home moves to
+beginning of current line.  End moves past last character on
+current line.
+
+     The very top line of the screen is a status line that
+shows the block number and the file name and a brief
+reminder of some of the function keys' functions.  It also
+shows an "i" if in the insert mode.  It also shows a count
+of the lines in the cut buffer.
+
+   F1 repeats a search.
+
+   F2 repeats a replace.
+
+   F3 sets up a search string and then searches.
+
+   F4 sets up a replace string and immediately replaces with
+      it.  (To repeatedly change CAT to DOG, use F3 to set
+      up CAT then use F4 to set up DOG and then press  F1 F2
+      F1 F2 etc. or press F10 F2 F10 F2 to search and replace
+      across multiple blocks)
+
+   F5 deletes the current line.
+
+   F6 joins the line below to the current line at the
+      cursor.
+
+   F7 "cuts" the current line to the cut buffer.  This does
+      not alter the current line.  (See the "c= " on status
+      line).
+
+   F8 "pastes" the oldest line in the cut buffer to the
+      current line on the block, overlaying the current
+      line.  The cut buffer is almost unlimited in size.  It
+      can be used to copy and move lines on the same block
+      or to different blocks (even blocks in different
+      files).  Notice that the count of lines cut (on the
+      status line) changes as you press F7 and F8.
+
+   F9 inserts blank blocks after the current block.
+
+   F10 does a search like F1, but across multiple blocks.
+
+   Esc exits from the editor.  If you want to cancel the
+       most recent changes, after pressing Esc, type
+       EMPTY-BUFFERS.  If you want your most recent changes
+       to be applied to the disk immediately, after pressing
+       Esc, type FLUSH.
+
+   CR  ends the current line, pushing anything to the right
+       onto the following line and pushing the lines below
+       it down.
+
+   Home  moves the cursor to the beginning of the current
+         line.  If already at the beginning, it moves the
+         cursor to top left corner.
+
+   End  moves the cursor just past the end of text on the
+        current line (which may be at the 1st position of
+        the following line).
+
+   Bksp  deletes the character to the left of the cursor.
+
+   Del  deletes the character the cursor is on.
+
+   Ins  toggles insert vs overwrite modes (see the "i" on
+        status line).
+
+   Ctrl-A switches between related blocks (usually shadow
+          blocks, but see Alt-A below).  Typically, this is
+          used to switch between the source block (such as 7)
+          and its shadow block (such as 1007).
+
+   Alt-A marks the current block as one of a pair.  Do this
+         on two separate blocks to mark the base block
+         numbers for two related ranges so that Ctrl-A will
+         then switch between them.  To return to the
+         default, where the even thousands and the the
+         following odd thousands are related (e.g. 0000 and
+         1000, 0001 and 1001, etc. or 2000 and 3000, 2075
+         and 3075) just press Alt-A twice on the current
+         block.
+
+
+                          Oooops
+
+     How do you exit from the editor without making any
+changes? (cancel your changes, that is)?  Press Esc key to
+get out of the editor and then type
+     
+       EMPTY-BUFFERS
+
+Warning, this will only eliminate the changes that have not
+yet been written back to disk.
+
+     F9 is good for opening up a file in the middle or for
+extending a file at the end.  As you move blocks around and
+delete them from where they used to be, you may accumulate a
+number of blank blocks.  SETTLE (used outside of the editor)
+is used to let the heavy blocks sink to the bottom and let the
+light (i.e. empty) blocks float to the top.  It only affects
+the range of blocks that you specify, e.g.
+
+                 315  345  SETTLE
+
+will re-arrange those blocks so that any completely blank
+blocks are at the highest numbers and the non-blank blocks
+are at the lowest numbers.  This compresses out blank
+blocks.  A related word CHOP will truncate a file by
+chopping off all trailing blank blocks, e.g.
+
+                 3 CHOP
+
+will chop the blank blocks off the end of the file whose
+unit# is 3.
+
+
+Chapter 18          The Metacompiler
+
+     Pygmy includes a metacompiler.  It is easy to use.  To
+regenerate the kernel of Pygmy, edit the source code in the
+file PYGMY.SCR to include your changes.  Then type
+
+                     1 LOAD
+
+     This will create a new version of the Pygmy kernel and
+save it to disk.  Be sure to edit the file name you want it
+saved as on scr #1.  Exit to DOS with
+
+                     BYE
+
+and bring up the new version you just created.  It is the
+kernel only, without the editor or assembler or other
+extensions.  However, it will have the file PYGMY.SCR
+already set up in unit# 0, and opened automatically.  To
+extend it, just load the proper load block.  This block
+number is usually noted on block #1 to make it easy to find.
+It will usually be block #5, e.g.
+
+                     5 LOAD
+
+Look at block 5 to see how this works.  You can edit the
+load blocks so they will include just what you want and then
+save the newly created Forth to the filename you specify.
+
+     Metacompiling Pygmy is very easy, so don't put off
+trying it.  It lets you fix all the aspects of Pygmy that
+you disagree with me about.  Your first attempt should be to
+generate a version of Pygmy with no changes whatsoever,
+except possibly the filenames you save the new versions
+under.  After you've done this once or twice you can begin
+changing the kernel, or extending it differently.
+
+     Here is how the metacompiler works.  First the load
+block (#1) sets some options then loads the metacompiler.
+This renames some of the current Forth's words (so they can
+be found later) and then redefines the defining words needed
+for the new Forth.  Note a number of variables such as TLIT
+and TVAR etc.  These will hold the addresses of the target's
+runtime routines (for LITERAL and VARIABLE etc.) as soon as
+those runtime routines have been defined in the target.  The
+metacompiler will use those values to compile the proper
+code in the target.
+
+     Then, the load block loads the target's code.  The
+target is compiled starting at address $8000.
+
+     H' holds the target's dictionary pointer (H holds the
+host's).  Following H' is the relocation factor used for the
+target code.  The curly braces switch between the target and
+host spaces, so that the regular host facilities, such as ,
+HERE -FIND etc can be used for both purposes.  The host does
+need some special metacompiler words.  When we are
+redefining a host word that we might need the original of,
+the original is renamed, so we will still have access to it
+under the synonym ( e.g.   : :' :  ;  ).  There are two
+ghost vocabularies used for the target.  After our
+redefinitions, FORTH and COMPILER refer to the target and
+FORTH' and COMPILER' refer to the host.  This is the secret
+that keeps everything straight.
+
+     When interpreting, words are looked up and executed (as
+is normal) from the FORTH' (host) vocabulary.  When
+compiling a colon definition, COMPILER' (host) is searched
+first.  If found the word is executed immediately.  If not
+found, FORTH (target) is searched.  If found, the word is
+compiled into the new definition.  If not found, it is
+converted to a number (or an error) and compiled as a
+literal into the new definition.  So, when metacompiling,
+target COMPILER words are never executed, leaving the host's
+free to operate.  When not compiling, target FORTH words are
+never executed, leaving our regular host system free to
+operate.  \ is redefined so when metacompiling, the word is
+looked up in the target's COMPILER vocabulary and compiled
+into the new definition.
+
+     So what changes might you make?  Changing the constant
+TMAX-FILES will let you specify just how many files to allow
+open at the same time.  Changing TNB lets you change the
+number of file buffers that will be used.  Currently TNB is 1,
+which allows 2 buffers or it is 3 which allows 4 buffers.
+Note that the number of buffers must be a power of two (and
+greater than 1), so acceptable values for TNB are 1, 3, 7, 15,
+etc.  (TNB and thus NB are set to 1 less than the number of
+buffers.)  You can eliminate the excess and useless words that
+I've included which you see no need for.  (Just don't
+eliminate any that are used in the definitions of other words
+that you want to keep.)
+
+   For target applications, you can let the metacompiler
+compile all of your CODE (assembly language) words so that
+you do not need to include the assembler in the final target
+application.  (You might also eliminate the editor from the
+final application if it isn't needed, but, since it is
+loaded after the kernel has been created, that's not
+affected by the metacompiler.)
+
+   If you are target compiling an application and want it to
+execute your code automatically (rather than coming up in
+Forth) just point the word BOOT at your application.
+Suppose you have named it  YOUR-APPLICATION. Type
+
+              ' YOUR-APPLICATION IS BOOT
+
+and then save it to disk  with something like 
+   
+              SAVE YOUR.COM
+
+   Note that BOOT can be re-vectored as above at anytime,
+not just when metacompiling.
+
+
+Chapter 19            Vocabularies
+
+     PYGMY, like cmFORTH, has two vocabularies: FORTH and
+COMPILER.  Compiler words are immediate by virtue of being
+in the COMPILER vocabulary.  INTERPRET only looks up words
+in FORTH.  When compiling, COMPILER is searched first.  A
+word found in COMPILER is executed immediately, otherwise
+FORTH is searched and, if the word is found, it is compiled.
+To force compilation of a COMPILER word, precede it with a
+backslash ( \ ). This is used in place of the FORTH-83 word
+[COMPILE].  CONTEXT holds the number that represents which
+of the two vocabularies is active.  Whichever it is, it is
+the vocabulary into which new words will be linked.  FORTH and
+COMPILER set CONTEXT to the appropriate number.
+
+     There are also has 2 "spare" vocabularies available for
+use by the metacompiler.
+
+
+Chapter 20        Additional Information
+
+   For additional information, browse through all of
+PYGMY.SCR using the editor ( n EDIT ) and the PgDn and PgUp
+keys.  Searching across blocks (using F10 in the editor,
+after setting up the search string with F3) is handy for
+finding a particular word's definition and where it is used.
+Use VIEW <word> or its shorthand  V <word> to pop into the
+editor on the source code for a particular word.  Then use
+Ctrl-A to switch to the corresponding shadow block.
+
+
+Chapter 21     How to Reach Me (and other addresses)
+
+     I'm glad to hear your comments.  What I hope will be my
+permanent email address is frank@pygmy.utoh.org.  Also, I
+expect to read comp.lang.forth occasionally, so that is
+another place to look for me if the frank@pygmy.utoh.org address
+ever fails.  My web site is http://pygmy.utoh.org.
+
+Join FIG,
+   Forth Interest Group   http://www.forth.org
+
+FIG is/was a great source for Forth related information.  See
+the web site for links, especially for local FIGs -- there
+might be one in your area.
+
+
+Chapter 22            The Glossary and Index
+
+     The on-line availability of the system's complete source
+code, coupled with the search across function in the editor,
+plus VIEW, plus the editor's shadow block function (the file
+pygmy.dow contains the "shadow blocks" i.e. comments, for the
+file pygmy.scr) serve as the glossary and the index.  You can
+look up anything and everything.
+
+
+Chapter 23             Memory Map
+
+     Pygmy fits in one 64K segment or less.  
+
+     DOS loads Pygmy at offset $0100.  CS@ will fetch the
+contents of CS (the code segment register), in case you need
+to know the absolute address of the program.  The dictionary
+grows up from low memory.  The tib, fib, disk buffers, and
+the stacks are in high memory (within the one segment).  The
+metacompiler constant TOP allows you to say how high
+high-memory is.
+
+Here is a sample memory map, with 4 disk buffers and TOP =
+65536. (The following gives the flavor of the memory map,
+not necessarily the actual values)
+
+origin                 $0100
+boot code              $0100
+caller's saved SP      $0102
+caller's saved SS      $0104
+first word to execute  $0106   (this points to RESET)
+continue with boot     $0108
+1st word's VFA (null)  $0132
+system variables       $0150 - $0197 (common to all tasks)
+user variables         $0198 - $01EF (for Terminal task)
+dictionary continues   $01F0
+HERE                   $46ED  ( perhaps, with text files and
+                                 multi-tasking loaded)
+return stack           $ECFE  ( grows down from $ECFE, i.e. R0 @ )
+data stack             $EBFE  ( grows down from $EBFE, i.e. S0 @ )
+FIB @                  $EDFE  ( FIB is below TIB -- for text file loading)
+TIB @                  $EF00  ( TIB is below the disk buffers)
+                              ( The highest disk buffer is 1K below TOP)
+4th disk buffer        $F000
+3rd disk buffer        $F400
+2nd disk buffer        $F800
+1st disk buffer        $FC00
+metacompiler TOP      $10000  ( i.e. 65536, to allow a full segment)
+
+
+Chapter 24                Files
+
+     MAX-FILES block files may be open at once.  If you want
+a different mix, use RESET-FILES and open a new set, or
+re-setup the files one by one with UNIT or OPEN.  If you
+then save an image of Pygmy, those files will be opened
+for you automatically next time you bring it up.
+
+     To install a file, you must say what unit# to use.  Set
+it to 0, 1, 2, etc.  The unit# you select determines the
+starting block number for that file.  It is always 1000
+times the unit#.
+
+
+Chapter 25           Direct Threaded
+
+     Pygmy is direct threaded, with TOS (top of stack) kept in
+a register (BX) for speed.
+
+     Constants are coded "in-line" rather than by jumping to a
+central constant routine.  This costs 2 bytes per constant
+but, at least at one time, is/was faster.  System variables
+are really coded as constants.  So this method helps speed up
+the system.  Note that the system variable TIB does not return
+the address of the input buffer, but the address of the
+address of the input buffer, as in figForth.
+
+     Variables don't seem to offer the same advantage and so
+they still use a central routine.
+
+     DEFER/IS deferred words are supported.  EMIT, KEY,
+KEY?, CR, BOOT, ABORT, NUMBER, and LITERAL are deferred.
+
+           ( e.g.  DEFER EMIT   ' (EMIT IS EMIT    )
+
+
+Chapter 26           History and Philosophy
+
+     Pygmy is based on cmFORTH by Charles Moore.  cmFORTH was
+designed for the NOVIX Forth chip.  cmFORTH didn't include an
+assembler as that wasn't needed for the NOVIX.  Also, it
+didn't include an editor, as it was designed to be used with a
+host terminal or computer that supplied the disk storage and
+editing facilities.  A Forth for the IBM PC/XT etc., can't as
+easily do without an assembler and editor, and so these have
+been included as part of Pygmy.
+
+     Pygmy uses cmFORTH as a starting point for a fast lean
+Forth that can be used for serious application development.
+
+     I've added multiple files (up to 15, but you can change
+to fewer if you like) open at the same time, and the default
+set are opened automatically.  This was inspired by Dennis
+Ruffer's notes on GEnie about Forth Inc's PolyFORTH.  If you
+want up to 200+ files open at once (well, there are some other
+considerations so 15 might be more realistic), see the
+supplemental code in PYGMY.SCR.
+
+     The editor is fast and comfortable.  
+
+     I wanted Pygmy small and fast, but also comfortable.  It
+has grown bigger because of the VIEW fields, but the ability
+to make words headerless compensates for that, I think.
+
+     I have not added additional vocabularies.  I like the
+cmFORTH idea of marking immediate words by the fact that
+they are in the COMPILER vocabulary.  Everything else is in
+FORTH.  This limitation on the number of vocabularies has
+not been a problem for me in practice, although it leads to
+the naming of assembler words with an ending comma.
+
+     DO/LOOP have not been included.  Use FOR/NEXT instead.
+
+     I no longer use cmFORTH's  TYPE ( a - a').  The cmFORTH
+TYPE worked on counted strings (i.e. a one byte count at the
+address, followed by the string).  Instead I use a regular
+TYPE ( a # -).  In addition there is TYPE$ ( a -) which
+expects the address of a counted string.  It does COUNT TYPE
+and does not leave an address on the stack.
+
+     There are 3 name changes in cmFORTH (and Pygmy) that
+delight me:  
+
+             new names        old names
+
+                  PUSH               >R
+                   POP               R>
+                     \        [COMPILE]
+
+PUSH and POP are so much easier to read and write, for me,
+than >R and R>.  PUSH and POP are so much better names, in my
+opinion, that I don't see how you can try them and then go
+back to >R and R>.  However, a number of people _have_
+convinced me that _they_ see how to do it.  So, it is a
+matter of opinion, and you are free to change them back if
+you wish.
+
+I also prefer \ to [COMPILE].  I like ( for comments, so I
+do not mind losing \ for that purpose.  Also it is shorter
+and clearer (I think) than [COMPILE] once you get used to
+it.
+
+     The stack comment for cmFORTH's  M/MOD is
+( l h u - q r) but I have implemented it as the more
+familiar ( l h u - r q).
+
+     Of course, there are extensive changes from cmFORTH
+because the primitives had to be coded in 8088/8086 machine
+language rather than NOVIX.
+
+     Note that this version (since version 1.5) has the
+ability to embed Pygmy in a C wrapper in order to call C
+library routines or to pass control back and forth between a C
+program and Pygmy.  Also, SP! and RP! take their values from
+the stack and the stacks are in the single segment with the
+rest of the code.
+
+     Commands to Pygmy can be passed on the command line, e.g.
+
+      C:\FORTH\PYGMY CR CR ." Hello!" CR BYE
+
+In addition, I have had a chance to run through the code and
+documentation to correct some typos and improve some
+comments and perhaps organize the files a little better.  If
+you have been following the versions of Pygmy, I think you
+will feel right at home with this new version.  If you are
+new to Pygmy, well, you will be starting with the best
+version of Pygmy.
+
+     I think there is room for a number of different styles of
+Forth.  Speed with lots of primitives in machine language,
+versus ease of porting to other microprocessors by having a
+minimal number of primitives: I (more or less) went for the
+speed.  I traded off some efficiency in disk access for a more
+regular and comfortable file interface.  I've supplied the
+hooks for sequential file access (see FILE-READ FILE-WRITE
+>POSITION >EOF >BOF etc.) primarily for accessing data files
+in various formats for any purpose.  In addition, as mentioned
+above, full text file loading is available.
+
+     I think a Forth system should come with its complete
+source code, and so Pygmy does.  I would rank that as one of
+my highest requirements in choosing a Forth.  I also think a
+Forth system should be fairly _small_.
+
+     However, there are several types of speed to consider.
+For me, application speed is of secondary importance
+(providing it is fast enough) to the speed with which I can
+develop an application.  For me, programmer speed is more
+important.  However, the economic tradeoffs have changed.
+Memory and CPU speed are vastly cheaper than they used to be.
+Does this mean we are no longer concerned with the size of the
+development environment or application?  I admit to a certain
+inertia with regard to "moving with the times" (i.e.  it hurts
+me to see the modern slow, bloated applications), but I
+believe size still matters.  One reason for that is the rule
+that complexity breeds complexity.  Another reason has to do
+with memory caches.  The smaller your application, the more
+chance of it remaining in the fastest memory.  Another reason
+has to do with the size of your personal memory cache,
+i.e. your mind.  There is a mental cost associated with huge
+development environments.  And, when those huge development
+environments run _slowly_, even on a fast machine, there is
+the destruction to your soul from being made to wait.
+
+
+Chapter 27      How to Print the Source Code
+
+     SHOW prints source code blocks 3 per page.  SHOW2
+prints source code blocks 6 per page (your printer must
+allow 132 character lines).  These words are now included in
+PYGMY.COM, so you don't have to load anything.  If you are
+using SHOW2, you must set up the word CONDENSED so it will
+work with your printer.  See blocks 5 and 163 for more info.
+Once you have set CONDENSED correctly for your printer, type
+
+   0  200  SHOW       ( 3 blocks per page)
+
+  or
+
+   0  200  SHOW2      ( 6 blocks per page)
+
+  or
+
+   0 200 1000 SHADOW  ( 6 blocks per page with shadows)
+
+to print the entire contents of PYGMY.SCR.
+
+     If you are using an HP LaserJet II, IIP, or III, (or
+many other printers) you can set the characters per inch
+from the front panel (internal font #10 on a II, for
+example) and just set CONDENSED to a NOP
+( e.g.   ' NOP IS CONDENSED ), or you can use the included
+LJ-CONDENSED (i.e. ' LJ-CONDENSED IS CONDENSED ).
+
+
+Chapter 28      _Starting Forth_ Notes
+
+     The following are some notes and code for using Pygmy
+with the first edition of the book _Starting Forth_ by Leo
+Brodie.
+
+ p. 12 and 13    STARS     and CHAPTER 6   DO LOOP +LOOP
+  instead of     : STARS ( # -) 0 DO  STAR  LOOP  ;
+         use     : STARS ( # -)  FOR  STAR  NEXT  ;
+
+  Pygmy uses FOR ... NEXT instead of DO ... LOOP.
+
+  The arguments for DO  are  limit and starting-index  and
+  the loop counts up from starting-index  to just before limit
+  e.g.     : TST1  7 0 DO  I  .  LOOP ;  would print
+        0  1  2  3  4  5  6 ok
+
+  FOR ... NEXT  only takes one argument, the starting index.
+  It counts down that many times, e.g.
+
+       : TST1  7 FOR I . NEXT ;
+       would print      6  5  4  3  2  1  0  ok
+
+  p. 25   stack underflow and overflow
+
+  Pygmy does not check for stack overflow.  It checks for
+underflow whenever you do .S
+
+  Anytime an error occurs - such as typing in a word that it
+doesn't know - it will reset the stack and the return stack
+pointers to their correct initial values.
+
+  The word  .S  will display the contents of the data stack.
+It shows the entire contents.  This is handy for debugging.
+If, before and after loading one or more blocks, .S shows
+different stack pictures, you have an error in the blocks,
+possibly an IF without a matching THEN.
+
+  p. 50 and p. 83 non-destructive stack print
+
+  The definition given in the book
+   : .S  CR  'S S0 @ 2- DO I @ . -2 +LOOP ;
+will not work in Pygmy.  However,  Pygmy has a built in  .S
+you can use instead.
+
+  p. 101   ABORT"
+  Pygmy has an IF built into ABORT"
+So, you can say  DUP 0= ABORT" error "  just as in the examples.
+
+  p. 123   F83's  >R   is equivalent to Pygmy's  PUSH
+  p. 123   F83's  R>   is equivalent to Pygmy's  POP
+
+  p. 302   F83'S  [COMPILE] is equivalent to Pygmy's   \
+that's a backslash - it does not indicate the whole line
+is commented out as in F83.  It forces compilation rather
+than execution of the following "immediate" word when you
+are making a colon definition.  It only works on words that
+are in COMPILER.
+
+  p. 177    <#  and number conversion
+  <# does not expect a double number, just a regular 16 bit
+number.  However, in Pygmy you do not need to say TYPE after
+the ending #> as the the TYPE is done as part of #>.
+
+  p. 258 TYPE in Pygmy is not like the TYPE in cmFORTH.
+In Pygmy, TYPE is the same as in _Starting Forth_ and F83, etc.
+
+ Pygmy also has the word TYPE$ ( a -) which expects the
+address of a counted string.
+
+  CHAPTER 9      internal structure
+  In Pygmy, every definition consists of a 2-byte view field,
+a 2-byte link field, a 1 to 32-byte name field, and a variable
+length parameter field.
+
+  The name field consists of a 1-byte count followed by zero
+to 31 characters.
+
+  In a colon definition, the parameter field begins with a 3
+byte jump to machine language code that nests down a level.
+Those 3 bytes are followed by the addresses of the words
+that make up the definition (2 bytes per address).
+
+  In a CODE definition - machine language - the parameter
+field begins with the actual machine code.  A word may be
+headerless, thus beginning with its parameter field.
+
+  The following is information that you need only if 
+you write CODE words:
+
+     The top stack item is kept in register BX.
+     The word must end with an "in-line" next.  This is
+         accomplished by the assembler macro  NXT,
+     Register SI is used for IP so if you want to use SI
+         you need to save and restore it.
+     PUSH, and POP, are used for both stacks, see source code
+         examples of switching the value in registers BP and SP
+         by using the assembler macro  SWITCH,
+
+Miscellaneous
+       _Starting Forth_'s  TIB  is Pygmy's  TIB @
+
+
+Chapter 29           Multi-tasker
+
+     See the source code and the examples in PYGMY.SCR.
+PYGMY.DOW has additional information.
+
+
+Chapter 30        C Library Routines, etc.
+
+     Pygmy (since version 1.5) has the ability to execute
+commands given on the command line.  It also has the ability
+to be embedded inside a C wrapper program.  In this case,
+Pygmy can have access to C functions and variables and data
+structures, including those in C libraries.  C can call Forth
+routines and Forth can call C routines.  For full details,
+consult my article "Coordinating Pygmy and C" in the
+March/April, 1996 (Volume XVII, Number 6) issue of _Forth
+Dimensions_.  A copy of that article (in the file CPYG.TXT),
+along with the files LP.C, BGI.SCR, and BGI.DOW, are included
+in this distribution of Pygmy 1.7.
+
+
+Chapter 31      The Kermit File Transfer Protocol
+
+     See my _Forth Dimensions_ article "Kermit in Pygmy".  The
+files KERMIT.SCR and KERMIT.DOW and KERMIT.TXT are included in
+this distribution of Pygmy 1.7.  They describe my simple
+implementation of the basic Kermit file transfer protocol.
+The article refers to the use of the multi-tasker for polling
+the serial port.  This is interesting (to me, at least) and
+seems to work fine on fast machines with buffered serial
+ports.  However, for our production use, we have switched back
+to using an interrupt routine for reading the serial port,
+allowing it to work even with slow machines or unbuffered
+serial ports.
+
+     As of November, 1997, I have reorganized the Kermit
+package and changed some file names.  See pfkerm.zip.  None of
+the actual source code has changed.
+
+
+
+
+                    **** The End ****

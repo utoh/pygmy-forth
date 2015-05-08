@@ -1,0 +1,61 @@
+A Simple Implementation of the Kermit Protocol
+               in Pygmy Forth
+
+              by Frank Sergeant
+              frank@pygmy.utoh.org
+              http://pygmy.utoh.org
+
+[ note April, 2007  I have corrected my email
+  and web addresses above.  References below
+  to www.eskimo.com are no longer valid.  See
+  pygmy.utoh.org instead (the Kermit files are
+  bundled with Pygmy version 1.7). ]
+
+
+I have written a very simple implementation of the
+Kermit protocol in Forth.  In particular, it runs under
+my Pygmy Forth for DOS (available from my web site),
+but probably could be adapted easily to other Forths.
+As the code is broken up into very small subroutines,
+it might even be of interest for comparison purposes
+for other languages, providing you read Forth.
+
+I have also written an article describing this code:
+"A Simple Implementation of the Kermit Protocol in
+Pygmy Forth" appeared in the May/June and July/Aug
+1997 issues (Volume XIX, Numbers 1 and 2) of _Forth
+Dimensions_, published by the Forth Interest Group
+(http://www.forth.org/fig.html).
+
+The file pfkerm.zip contains a copy of the article,
+the source code (in both Forth block files and as a
+text file listing), and some email correspondence
+between Frank da Cruz and myself containing some
+corrections to the article.  pfkerm.zip is available
+separately at my website and is also included in
+the file pygmy15.zip and also on the Kermit ftp site.
+
+    http://www.eskimo.com/~pygmy/pfkerm.zip
+    http://www.eskimo.com/~pygmy/pygmy15.zip
+    ftp://kermit.columbia.edu/kermit/archives/pfkerm.zip
+
+The plain text files (i.e. not containing the Forth block
+files and not containing the 132-column side-by-side
+listing of the source and shadow blocks) are available on
+the Kermit ftp site.  Get the files beginning with a "pf"
+prefix.
+
+    ftp://kermit.columbia.edu/kermit/c/pf*
+
+The source code is not Public Domain or Shareware, but
+you may use it freely for any private or commercial
+purpose provided you do so at your own risk.
+
+This effort makes no attempt to tap the speed potential
+of Kermit.  I wanted to build into my medical
+accounting application the ability for my customers to
+upload and download small files, to and from a
+mainframe, for medical billing/insurance claims
+purposes.  It is working very well for this purpose.
+
+  -- Frank Sergeant

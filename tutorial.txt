@@ -1,0 +1,437 @@
+[ Note, April, 2007.  I have left this article mostly unchanged from
+the original, written many years earlier.  I have corrected the url
+for the Forth Interest Group.  Although it seems to be gone now, the
+web site is still there and the links to the regional FIGs etc. may be
+of some use.  References to diskettes and bulletin boards are obsolete
+and the Internet and comp.lang.forth and other news groups and mailing
+lists (e.g. armforth) and Google have taken their place.  Google for
+gmane for an easy way to read various mailing lists as if they were
+newsgroups.]
+
+
+             Introductory Pygmy Forth Tutorial
+
+Foot in the Door
+
+There is a _lot_ of information available about Forth in books,
+magazines, diskettes, and bulletin board messages.  Much of this
+material is available through the Forth Interest Group
+(http://www.forth.org).  You should join, or at least
+get their list of publications, and read as much as possible.  At
+the very least you should study the book _Starting Forth_ by Leo
+Brodie and you should read the Pygmy Forth manual (the file
+PYGMY.TXT) and study its source code blocks and their shadows.
+
+Do the Exercises
+
+If you are a beginner, or if you are "stuck" somewhere in your
+study of Forth, please study this tutorial and actually do the
+practice exercises, no matter how silly they sound.
+  
+Disclaimer
+
+This is a tutorial on Forth, specifically Pygmy Forth for
+MS/PC-DOS computers.  It does not include information about how
+to use DOS or how to turn on your computer or warn you that you
+need to type a carriage return at the end of a command or explain
+what an .EXE or .COM or .BAT file is or how you can find the
+executable files on a disk or how to browse through ASCII
+textfiles or what ASCII means.
+
+------------------------
+To Over Simplify and Exaggerate:
+
+     To master Forth you only need:
+
+        A. a few broad, simple concepts
+        B. a "cookbook" collection of examples
+        C. a lifetime's worth of evaluating what you
+           are doing and why
+
+----------------------
+A. A Few Broad, Simple Concepts
+
+Forth is modular.
+
+We do our work in little pieces and pyramid them into simple,
+powerful, hierarchical structures.  We should all adopt Rob
+Chapman's slogan "It's so simple it has to work."  Our job is to
+_make_ it that simple and _keep_ it that simple.
+
+Forth is interactive.
+
+We build a little piece and test it immediately from the 
+keyboard.  The more we test early the less we are bitten later.
+
+Forth is not a religion.
+
+Unlike some languages I might mention, Forth is so simple we do 
+not need to take it on faith.  We can see it and test it, rather 
+than having to "believe" and "hope" and "trust."  We can inspect 
+and modify any part of the system.  Full source code is included, 
+and is small enough, and modularly organized enough, to be 
+manageable.  
+
+I want to go over this point again because it is so radical it 
+might be missed: Pygmy Forth includes _all_ of its own source 
+code.  You can actually understand it.  You can study and modify 
+the system.  You can examine any part of the system you are 
+curious about.  This is virtually unheard of with any language 
+except Forth.  [Times have changed since I wrote the above
+originally.  With the GNU project and other free software
+efforts, many huge systems do come with full source code --
+whether it is small enough to be understandable is still a
+factor, though.]
+
+Forth has an explicit data stack.
+
+Take a stack of magazines and put them on the floor one at a 
+time, one on top of the other.  Which is the easiest to get to 
+(the one on top)?  Empty the stack and put one magazine down, 
+saying "3" then put another magazine on top of it, saying "5." 
+Ok, what's on the stack (3 and 5)?   Which number is on top (5)? 
+Now pretend you are the + (i.e. "plus" or addition) operator.  It 
+is your job to take two numbers off the stack, add them, and put 
+the sum back onto the stack.  Go ahead do it, take the 5 and 3 
+off the stack, add them to get 8, and put the 8 back on the 
+stack.  How many items are on the stack now (one) and what is it 
+(8)?  (Notice the "subliminal" hints in the previous questions, 
+in case you are having trouble answering.)
+
+Forth has active operators.
+
+In the previous example, + _did_ something; it wasn't a mere
+symbol to tell something else to do something.  Forth words are 
+active!  They go to the stack to get the materials (numbers) they 
+need, they do their work, then they place their results on the 
+stack.
+
+Forth must be practiced
+
+Ok, you know enough now to start practicing with the computer.  I 
+hope you have printed out a hard copy of this file so you can 
+read along while you run Pygmy on the computer.  Go ahead, bring 
+up Pygmy.
+
+Put some numbers on the stack by typing   1  3  5  7  9  followed 
+by the carriage return (which I am never going to mention
+again!).  What is on the stack?  What is on top?  Type .S to 
+display the contents of the stack and check to see if your 
+answers were correct.  Now type  .  and see what happens.  Type  
+.S  and see if the stack is different.  The dot removes the top 
+item from the stack and prints it as a number.  Play with putting 
+numbers on the stack and removing them. 
+
+Forth uses postfix notation.
+
+This should not surprise you since it is how  +  worked several
+paragraphs back.  Postfix means you type the operator _after_ 
+typing its operands.  Try out these examples (and use  .  or  .S 
+to see the results):
+
+      multiply 3 by 5 by typing              3 5 *
+      subtract 7 from 9 by typing            9 7 -
+      divide 27 by 3 by typeing             27 3 /
+
+
+Note, the order of operands is exactly the same as you are used 
+to in "infix",  i.e.   3*5 or 9-7; the only difference is the 
+operator goes after its operands instead of between them.  Ok, 
+continue.
+
+      (3+5)*(6+2) by typing          3 5 + 6 2 + *
+       3+5 * 6+2  by typing          3 5 6 * + 2 +
+
+Postfix is simple, direct, doesn't require precedence rules, 
+doesn't require parentheses.  You'll get the hang of it in no 
+time.  Notice even in these complex examples that the order of 
+the operands (the numbers) is the same in both the infix and the 
+postfix versions.  The last example above, due to the higher 
+precedence of the infix multiply operator, is _not_ the 
+equivalent of 8*8, but of 3+30+2.
+
+Forth uses one or more blanks to separate words in the input
+stream.
+
+A word is a group of non-blank characters.  Generally speaking, 
+the only things you feed Forth are words.  Each word is one of 
+three things: 
+
+   1. A word already known to Forth (i.e. it is in Forth's 
+      dictionary), in which case Forth executes the word.
+   2. A word not in Forth's dictionary, but one that can be 
+      interpreted as a valid number (e.g. 75), in which case 
+      Forth does interpret it a number and pushes it to the 
+      stack.
+   3. Neither of the above, in which case Forth reports an error.
+
+Please re-read that.  Isn't that simple?  Isn't that pretty?
+Like the shark is a feeding machine, Forth is an executing 
+machine.  It gobbles input, pushing numbers to the stack,
+executing words which exist in the dictionary, and choking on 
+anything else.
+
+It makes no difference whether you separate words with one space 
+or 50, whether you put several words on one line or spread them 
+across several lines.
+
+_You_ can add words to the dictionary.
+
+And, they are full citizens with equal standing to all the other
+words in the dictionary.  To use this power responsibly, remember
+to add little words and not great big unmanageable words.  I do
+not mean a word's name should be short, but that its function
+should be simple, obvious, straightforward.  We "divide and
+conquer" at the beginning rather than trying to debug a hopeless
+mess at the end.  Do not make a word a jack of all trades.  Make
+it a master of one.
+
+This process of adding a word to the dictionary is called 
+defining a word.  Several different types of words can be 
+defined, but for now we will study a single type.  This one type 
+can be used for everything you need at first.  This type of 
+definition is called a colon definition, because the colon starts 
+the definition, e.g.
+
+: SEVENTEEN    17  ;
+
+Type that in and see what happens.  Nothing?  Well, not nothing 
+exactly, as you did get the "ok" prompt to indicate Forth gobbled 
+it up with no complaints.  The new word SEVENTEEN is now in the 
+dictionary.  Type  SEVENTEEN  and see what happens (use  .  or 
+.S).  So, what else would you expect it to do?  It puts the 
+number 17 on the stack.  The definition begins with the word  : 
+which is followed by a blank because the colon is not a _symbol_ 
+but an active word.  You are used to numbers preceding a word 
+that uses them (so they will be waiting on the stack).  On the 
+other hand, strings often follow the word that uses them.  In 
+this case  :  expects to find a string in the input stream, and 
+it uses this string as the name of the new word it creates.  Then 
+colon collects all the other words up to the  ;  and stores them 
+in the body of the new word.  The semicolon is a special word in 
+that it ends the definition.  Try defining and executing the 
+following until you get the hang of it:
+
+: 3*  ( n - 3*n)   3  *   ;   
+17 3* .
+2 3*  .
+2 3* 3* 3*  .
+
+: FEET  ( feet - inches)   12  *  ;
+6 FEET  .
+5 FEET  .
+
+: STAR  ( -)  ." *"  ;
+STAR
+STAR  STAR  STAR
+
+: STARS  ( # -)  FOR  STAR  NEXT  ;
+0 STARS
+1 STARS
+2 STARS
+200 STARS
+
+: DIGITS ( -)   0     10 FOR   DUP .   1+ NEXT   DROP  ;
+DIGITS
+: DIGITS ( -)    CR CR CR DIGITS CR CR CR  ;
+
+Notice the comments in parentheses inside every definition such
+as   ( n -).  Notice how the left parenthesis is followed by a
+space.  As you must be getting used to by now, the left
+parenthesis is a word, although one that is executed during the
+defining process.  What does it do?  It skips the input stream up
+through the ending parenthesis.  Why do we put in comments?
+Several reasons.  First, it is our minimum specification of what
+the word is intended to do.  It shows what should be on the stack
+before and after the word executes.  We need to know what the
+word should do as we write it and as we test it.  For example,
+DIGITS takes nothing from the stack and places nothing on the
+stack.  We call this comment a "stack comment" or a "stack
+picture".  Get in the habit of putting this in every word you
+define.  Notice the use of Forth's print statement in  STAR.  The
+." (i.e. dot-quote) is a word, so it is followed by a space, then
+by whatever characters you want to display, then by an ending
+quote mark.  FOR ... NEXT should be obvious.   DUP copies the top
+of the stack, i.e. its stack comment would be ( n - n n).  DROP
+drops the top item from the stack, i.e. ( n -).  CR outputs a
+carriage return.
+
+Next, you try defining a word that prints your name.  Then use 
+that word in the definition of another word.  Here's an example:
+
+      : ME ( -)  ." FRANK"   ;
+(be sure to test it before you continue!) then
+      : WHO? ( -)  ME ." , THAT'S WHO!"  CR  ;
+
+Forth is case-sensitive.
+
+At least Pygmy and many others are case-sensitive.  To test it 
+try typing the following four lines to see which of them Forth 
+executes and which it chokes on.
+
+   CR
+   cr
+   cR
+   Cr
+
+Review
+
+Where are words looked up (the dictionary)?  Where do numbers go 
+(the stack)?  How long should a definition be (not very)?  When 
+should you test (immediately upon defining each word)?  How do 
+you find out how a particular Forth word works (look at its 
+source and experiment with it from the keyboard)?
+
+There you have it.  Those are the concepts you need.  Everything 
+else is simply a matter of asking "How do I do such and such?" 
+and finding a cookbook example to copy, or better, to study and 
+possibly modify.
+
+---------------------
+The Cookbook
+
+Where do you find examples, and how do you answer questions about 
+the Forth system?  Type  WORDS  and see what happens.  This 
+displays the words in the dictionary.  Did they scroll by too 
+fast?  Try it again and press any key to make it halt, and then 
+press a key again to let it continue.  When you see a word that 
+interests you, such as  EXPECT  type
+
+      VIEW EXPECT
+
+Bang, you are popped into the editor at the definition of EXPECT. 
+You can read its definition, especially its stack comment.  You 
+can then use PgUp and PgDn to browse through nearby blocks of 
+source code.  If you have the shadow blocks for Pygmy you can 
+press Ctrl-A to alternate between the block EXPECT is defined on, 
+and its shadow block that gives more information.
+
+Speaking of the editor, type  .FILES  and see what happens.  This
+shows the files that are currently available, the beginning and
+ending block numbers for each file, and each file's DOS handle
+number.  (If the handle number is shown as -1 then the file is
+not available.)  Notice that PYGMY.SCR begins at block zero, so
+type
+
+       0 EDIT
+
+This file holds _all_ the source code for Pygmy.  Browse through 
+it with PgUp, PgDn, (and switch to and from the shadow file with 
+Ctrl-A, if the shadow file is available).  Do not worry too much 
+about learning all the details of what you see.  Right now you 
+are just taking a tour to see what's where.  Go ahead, browse 
+awhile.  Notice that the definitions of words usually have stack 
+comments.  Press Esc to get out of the editor.
+
+By using  WORDS  EDIT  and  VIEW  you should be able to locate
+the source code for any word in the dictionary.  Now here's where
+the Cookbook comes in:  get into the editor at the first block or
+so (e.g.  1 EDIT)  and then use F3 (i.e. the function key F3) and
+F10 keys to set up a search string for the word of interest and
+then search across blocks for it.  This way you can find examples
+of how that word has been used within other definitions.
+
+You can learn a lot from doing that.  Plus you will get more 
+comfortable with Pygmy as a whole.  However, until you are 
+comfortable, until you are familiar with just how it works, you 
+can refer to the following list of How-do-I-do-such-and-such
+questions to get going.
+
+Q:  I am tired of defining words and having them scroll off the 
+screen where I can no longer see the stack comment you made me 
+write.  Ditto for retyping the definition every time I restart 
+Pygmy from DOS.
+
+A: You are now ready to use the editor to save and change the
+source code you write.  An entire file is set up just for your
+own code.  It is named YOURFILE.SCR.  You can see it listed when
+you type .FILES.  Note that it starts at block 2000.  Type  2000
+EDIT  and browse through it with PgDn and PgUp.  All the blocks
+are blank, probably, unless you have already put stuff in them.
+See the documentation file PYGMY.TXT for instructions on using
+the editor, or use the quick reference reminder list on the
+status line at the top of the display, and experiment.  Type away
+to enter your source code.  Then, to compile your source code,
+say from block 2002, get out of the editor by pressing Esc and
+type 2002 LOAD.  To get back into the editor, you can type  2002
+EDIT  or you can just type  ED  to return to the last block
+edited.  When you exit from Pygmy with  BYE  the words you've
+loaded will vanish from the dictionary, but their definitions
+will still be on block 2002.  Next time you run Pygmy, you can
+reload those definitions without retyping them just by saying
+2002 LOAD.
+
+Q: I'm tired of typing  2002 LOAD  to reload my favorite little
+additions every time I run Pygmy.  Isn't there a way to avoid
+that step?
+
+A: Yes, there is a way.  After you have loaded your favorite
+words, type
+
+           SAVE  A5.COM
+
+That creates an executable file similar to the one you started up
+Pygmy from, but named A5.COM.  Of course you are free to invent a
+more meaningful file name.  But, the file extension should always
+be .COM.  Next time you want to run Pygmy, run it by typing  A5
+from DOS.  The dictionary will contain all your goodies.
+
+Q: How do I create a file in Pygmy?
+
+A: You already have a file for your source code blocks, i.e.
+YOURFILE.SCR.  Just use it!
+
+Q: But it's full.  It only has eight blocks and I've used them 
+all up.
+
+A: Oh, well, that's simple.  Get into the editor and move to the 
+block where you want more room.  Press the F9 key. The editor 
+will ask you how many.  Enter a number, such as 20. The editor 
+will spread open the file at that point and insert 20 blank 
+blocks right after the current block.
+
+Q: But, what if I want to use a _different_ file for some of my 
+code?
+
+A: There are several ways to do it.  Just get out to DOS and type
+
+         COPY YOURFILE.SCR  NEWFILE.SCR
+
+then get back into Pygmy and type
+
+         " NEWFILE.SCR"  4 OPEN
+         SAVE A6.COM
+
+or, from within Pygmy you can create a new file by loading the 
+definition of NEWFILE from block 142 and using it to create
+the new file, e.g.
+
+         " NEWFILE.SCR"  NEWFILE
+          
+Well, that gives you the idea, I'm sure.
+
+Q: Can Pygmy load from textfiles?  I'm more comfortable with them 
+and with my favorite editor.
+
+A: Nonsense!  Just practice with Pygmy's block editor until you
+become comfortable with _it_.  But, the answer is yes, you can
+load textfiles with FLOAD or with INCLUDE.  I'll leave it as an
+exercise for you to look up those words in PYGMY.SCR and/or to
+look up the discussion of textfile loading in the manual
+PYGMY.TXT.  However, block files have a lot to offer over
+textfiles, such as their instant availability with the built-in
+editor, and their inherent modularity.  You _are_ writing very
+small definitions, aren't you?
+
+Q: But I've seen some of _your_ source code and sometimes a 
+single word damn near overflows an entire block.
+
+A: Don't do what I do; do what I say.
+
+Conclusion
+
+Do you feel oriented and comfortable yet (yes, I sure do, you've 
+opened my eyes to the power and beauty of Forth!)?
+
+
+                         THE END

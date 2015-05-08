@@ -1,0 +1,695 @@
+copyright 1992 Frank Sergeant 
+               frank@pygmy.utoh.org
+               http://pygmy.utoh.org
+
+[ Email and web addresses updated April, 2007. ]
+
+
+     The following article, with perhaps a minor change or two, 
+appeared in the Sept/Oct '92 issue of _Forth Dimensions_, published
+by the Forth Interest Group.  Contact them at P.O. Box 2154, Oakland,
+CA  94621, or (510) 89-FORTH (voice), or (510) 535-1295 (fax) in 
+order to subscribe or join or order books.  [See my web site for
+current address information for the Forth Interest Group.]
+
+
+               
+                   The Little HELP Engine
+
+               (Add HELP to Your Applications)
+
+                      by Frank Sergeant
+
+
+
+     I wanted on-line Help for my latest project, The Bare 
+Bones EPROM Programmer kit.  The clearer the documentation, 
+the happier the users and the easier the technical support.  
+Here is the code, written in Pygmy Forth, for the Help 
+system along with a discussion of various alternatives and 
+enhancements.  You can use this approach with just about any 
+Forth system to add Help to your own applications. 
+
+     What should happen when F1 is pressed?  Pop up the 
+message "Read The Manual?"  No, we need a richer facility, 
+but without spending too much time or memory on it. 
+
+                         The Basics
+
+     Later we will add some features, but first let's 
+consider a simple Help system.  Pressing PgDn or PgUp moves 
+through the entire Help system sequentially.  Pressing a 
+number key (i.e. 0 to 9) jumps directly to a selected topic.  
+Pressing Esc (escape) exits the Help system.  It must be 
+easy for the developer to add and change the text and the 
+links between topics.  Changing the text does not require 
+re-building or re-compiling the application.  Thus, the Help 
+"engine" is independent of the specific text and 
+application. 
+
+     The Help system is invoked from application code by 
+specifying a range of Forth blocks, as in 
+
+                       3000 3031 HELP
+
+HELP then clears the screen and displays the first 15 lines 
+of the first block (block #3000 in the example above).  The 
+next block to be displayed depends on the key the user 
+presses.  As mentioned above, PgUp and PgDn move 
+sequentially through the allowable range of blocks, and Esc 
+ends the Help session.  The last line of the block contains 
+the block numbers to jump to if the user presses the keys 0 
+to 9.  These destinations are in plain ASCII, five digits 
+per number, with a single space between numbers.  If any 
+other key is pressed, HELP beeps and ignores it.  Since both 
+the text and the links are in plain ASCII format, no special 
+compilation step is needed.  Type the text and any 
+destination numbers with your regular block editor.  To 
+allow the user to jump from the current block, give him a 
+numbered list of choices and put the associated destinations 
+on the bottom line of the block. 
+     
+     The entire Help engine consists of just 5 or 6 Forth 
+words and takes very little space in the dictionary no 
+matter how simple or fancy the Help text may be.  See Figure 
+1 for the source code. 
+     
+     NUM ( a # - n) is a replacement for NUMBER ( a - n).  
+Your Forth system may already have such a word.  If so, use 
+it instead.  Unfortunately, my NUMBER takes a counted string 
+(and actually uses the count), and I do not wish to embed a 
+count into the Help blocks.  Later I will probably change my 
+NUMBER to take an address and count.  Meanwhile I use NUM 
+for this purpose. 
+
+     The variable HELP# ( - a) holds the number of the 
+current Help block. 
+
+     INDEX@ ( choice - next-help-scr#) uses the choice 
+number of 0 to 9 to index into the list of numbers on the 
+bottom line of the current Help block.  Each number occupies 
+5 characters and is followed by a space.  For example, the 
+number associated with choice 3 starts 18 bytes from the 
+beginning of the last line.  The word -LEADING eats leading 
+spaces, so we can omit leading zeroes.  We must still right-
+justify the numbers in their proper 5-byte fields.  
+Alternatively, we can use -TRAILING to eat trailing spaces, 
+and left-justify the numbers.  Unused choices may be left 
+blank. 
+
+     .HELP ( -) clears the screen and displays the first 15 
+lines of the current Help block. 
+
+     Based on the key the user presses, NEXT-HELP# ( key - 
+new-scr#) proposes a number for the next Help block to be 
+displayed. 
+
+     HELP ( 1st-scr# last-scr# -) puts it all together, 
+displaying the first block, collecting keystrokes, and 
+moving to the next block. 
+
+     I've spread the code out with extra lines and screens 
+and comments to make it more readable, but you can probably 
+crowd it onto a single screen if you wish. 
+
+                        Alternatives
+
+     The simple system described above is easy to implement, 
+surprisingly powerful, and takes about 336 bytes of 
+dictionary space.  However, it has some limitations.  First, 
+the text displayed is limited to 15 lines of 64 characters.  
+This can be fancied up by surrounding the text with a box 
+and the title "HELP" and a message at the bottom suggesting 
+which keys could be pressed next.  See the alternate 
+definition of .HELP in Figure 2. 
+
+     Perhaps 15 lines of 64 characters are enough.  It 
+forces you to be concise when you create the text, or to 
+spread it out in bite-sized pieces among several screens.  
+This may well improve the ease of use and clarity of the 
+system from the user's viewpoint. 
+
+     Another limitation is the 10 direct jump destinations, 
+one for each of the digits 0 to 9.  A list of 15 or 20 
+destinations must be broken down into groups and subgroups 
+so that, at each level, you have no more than 10 choices.  
+Since humans are usually more comfortable with a list 
+beginning with one than with zero, you may wish to further 
+limit the number of choices to only 9. 
+
+     If we need more than 9 or 10 choices, we can allow 
+letters and/or larger numbers.  This requires several 
+keystrokes from the user and a more complex Help engine.  
+The single keystroke is easier on the user, I think, and on 
+the programmer.  Various other approaches, such as making 
+certain words appear in bold, and tabbing to them, could be 
+tried, but I think they cost too much in complexity for what 
+they give.  All in all, pressing a key between 0 and 9 is 
+pretty convenient. 
+
+     The limitation of 15 lines by 64 characters can be got 
+around, and may be worth doing at times.  For example, you 
+might set up the Help blocks in pairs where 16 lines of the 
+first and 8 lines of the second are displayed.  Then you 
+have lots of room remaining on the second block to associate 
+letter or digit keypresses with destinations.  Some 
+combination of these variations should handle just about any 
+Help system need. 
+
+                         Backing Up
+
+     This is a hierarchical, direct-access system, not 
+purely sequential.  As such, it might be nice to be able to 
+backtrack.  Three possibilities come to mind.  The first is 
+to stack each screen as we move to the next.  Then, whenever 
+the we press Esc, we backup to the previous screen, until we 
+are at the root.  Then Esc exits the Help system.  This is 
+no good.  If the we traverse the entire system sequentially 
+we surely should not need to revisit every single screen 
+again just to get out of Help. 
+
+     A more reasonable approach is to stack only the screens 
+we jump from.  When we move sequentially with PgUp and PgDn 
+nothing gets stacked.  As before, Esc backs up, but to the 
+last place we jumped from.  This could be done by adding a 
+variable to keep track of the number of jumps and by pushing 
+the jumped-from block number to the return stack.  This 
+increases the flexibility of the Help system and also its 
+complexity.  It may be worth it. 
+
+     A compromise is to hard-code the return path.  Since we 
+may not wish to use choice zero, we dedicate it to the 
+return screen.  Whenever Esc is pressed, the zero choice 
+jump is made, if it exists.  If it does not exist, then the 
+Help system is exited.  Thus, no matter how the user gets to 
+the current screen, the back-out path is fixed.  If there 
+are just a few screens that should return in one of several 
+different ways, depending on how they were reached, it would 
+be possible to duplicate these screens and give each one a 
+different return destination.  This is the method I have 
+used.  Figure 2 shows the alternate definitions to do this 
+and Figure 3 shows part of the Help system text from the 
+EPROM project. 
+
+                         Conclusion
+
+     So, there you have it: an easy way to add HELP to your 
+own applications, and an illustration of the convenience of 
+Forth blocks.               
+
+                             END
+
+
+
+                        Author's Bio
+
+
+     Among other things, Frank makes EPROM programmers 
+affordable by everyone.  If you are interested in the EPROM 
+Programmer kit, from plans to partial kit to fully 
+assembled, see the file FLIER.TXT.
+
+
+
+                           Figures
+
+
+Figure 1. Screens 2001 through 2005 contain all the code
+          necessary for a simple Help Engine.
+
+       file HELP.SCR
+
+       scr # 2000 
+       |EXIT                 Help System Summary                        |
+       |     Display the first 15 lines of the current help screen.     |
+       |     Wait for a keypress:                                       |
+       |          Esc ends the help session.                            |
+       |          PgUp or PgDn moves sequentially through help screens. |
+       |          0-9 selects a new help screen to jump to.             |
+       |     When jumping to a screen, the key 0-9 is used as an index  |
+       |into the last line of the current help screen to find the number|
+       |of the next help screen.  See bottom of this screen for an      |
+       |example, where pressing key 0 jumps to screen 12345 and pressing|
+       |key 1 jumps to screen 5.  Right justify numbers in a 5-character|
+       |field, follow each number by a space.  Leading zeroes are       |
+       |optional.                                                       |
+       |                                                                |
+       |Example:                                                        |
+       |12345 00005 00000   345  2341    75    76    77 64432   119     |
+       |________________________________________________________________|
+
+       scr # 2001 
+       |( Help               NUM    HELP#)                              |
+       |                                                                |
+       |        ( replacement for NUMBER that uses an address and count)|
+       |: NUM ( a # - n)                                                |
+       |  DUP PAD C!     PAD 1+ SWAP CMOVE (  )  PAD NUMBER   ;         |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |VARIABLE HELP#             ( block # of current help screen)    |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |________________________________________________________________|
+
+       scr # 2002 
+       |( Help               INDEX@)                                    |
+       |                                                                |
+       |( Choose next help screen from list at bottom of current screen)|
+       |                                                                |
+       |: INDEX@ ( choice - next-help-scr#)                             |
+       |  6 *                           ( ie 6 bytes per choice number) |
+       |  HELP# @ BLOCK   ( ie starting address of current help screen) |
+       |  [ 15 64 * ] LITERAL +                ( ie start of last line) |
+       |  +                                  ( addr-of-selected-number) |
+       |  5 -LEADING ( a #)                ( ie eat any leading spaces) |
+       |  NUM  ;                                                        |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |________________________________________________________________|
+
+       scr # 2003 
+       |( Help               .HELP)                                     |
+       |                                                                |
+       |                ( show the 1st 15 lines of current help screen) |
+       |                                                                |
+       |: .HELP ( # -)                                                  |
+       |  CLS                                           ( clear screen) |
+       |  HELP# @ BLOCK ( a)                                            |
+       |  15 FOR ( a)                                                   |
+       |         DUP 64 -TRAILING TYPE  CR               ( type a line) |
+       |         64 +                           ( advance to next line) |
+       |     NEXT  DROP  ;                                              |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |________________________________________________________________|
+
+       scr # 2004 
+       |( Help                NEXT-HELP#)                               |
+       |                                                                |
+       |                            ( propose a new help screen number) |
+       |: NEXT-HELP# ( key - scr#)                                      |
+       |    HELP# @ SWAP  ( old-scr# key)                               |
+       |    DUP 201 ( PgUp) = IF DROP 1- EXIT THEN       ( ie increment)|
+       |    DUP 209 ( PgDn) = IF DROP 1+ EXIT THEN       ( ie decrement)|
+       |    DUP '0 '9 BETWEEN IF                                        |
+       |             '0 -    ( ie >DIGIT, convert character to a number)|
+       |             INDEX@               (  and then to a block number)|
+       |             SWAP DROP EXIT THEN                                |
+       |    DROP ( old-scr#) ;        ( for illegal key return old-scr#)|
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |________________________________________________________________|
+
+       scr # 2005 
+       |( Help                   HELP)                                  |
+       |: HELP ( 1st last -)                                            |
+       |  OVER HELP# !   ( make the 1st screen the current help screen) |
+       |  BEGIN ( 1st last)                                             |
+       |      .HELP                  ( display the current help screen) |
+       |       KEY DUP 27 -                                             |
+       |    WHILE ( while not Esc)                                      |
+       |       NEXT-HELP#  ( convert the key to a possible next screen) |
+       |       ( 1st last new) PUSH 2DUP ( 1st last 1st last)           |
+       |       R@ ROT ROT BETWEEN           ( ie is new scr# in-range?) |
+       |       R@ HELP# @ -  ( ie is new scr# different from current#?) |
+       |       AND ( 1st last flag)   ( must be in-range and different) |
+       |       POP SWAP ( 1st last scr# flag)                           |
+       |       IF HELP# ! ELSE DROP BEEP THEN  ( 1st last)              |
+       |  REPEAT ( 1st last key) DROP 2DROP  ;                          |
+       |                                                                |
+       |________________________________________________________________|
+
+
+
+
+
+Figure 2. Screens 2006 through 2008 contain alternative
+          definitions for a fancier Help Engine.
+
+
+       scr # 2006 
+       |( Help    Alternate version of .HELP)                           |
+       |                                                                |
+       |                ( show the 1st 15 lines of current help screen) |
+       |                                                                |
+       |: .HELP ( # -)                                                  |
+       |  CLS                                           ( clear screen) |
+       |  ." ----------------------------- Help ------------------------|
+       |-----" CR   64 SPACES ." |" CR                                  |
+       |  HELP# @ BLOCK ( a)                                            |
+       |  15 FOR ( a)                                                   |
+       |         DUP 64 TYPE ." |" CR         ( type a line)            |
+       |         64 +                           ( advance to next line) |
+       |     NEXT  DROP  64 SPACES ." |" CR                             |
+       |  ." ------------------------------------- Esc--PgUp--PgDn--0 th|
+       |ru 9 "  ;                                                       |
+       |                                                                |
+       |________________________________________________________________|
+
+       scr # 2007 
+       |( Help       Alternate version of NEXT-HELP#)                   |
+       |                            ( propose a new help screen number) |
+       |: NEXT-HELP# ( key - scr#)                                      |
+       |    HELP# @ SWAP  ( old-scr# key)                               |
+       |    DUP 201 ( PgUp) = IF DROP 1- EXIT THEN       ( ie increment)|
+       |    DUP 209 ( PgDn) = IF DROP 1+ EXIT THEN       ( ie decrement)|
+       |    DUP 27 ( Esc) = IF 2DROP 0 INDEX@ EXIT THEN  ( ie backtrack)|
+       |    DUP '0 '9 BETWEEN IF                                        |
+       |             '0 -    ( ie >DIGIT, convert character to a number)|
+       |             INDEX@               (  and then to a block number)|
+       |             DUP IF SWAP THEN DROP   ( retain old-scr# if new=0)|
+       |             EXIT THEN                                          |
+       |    DROP ;                                                      |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |________________________________________________________________|
+
+       scr # 2008 
+       |( Help  Alternate version of HELP, Esc backs up through tree)   |
+       |: HELP ( 1st last -)                                            |
+       |  OVER HELP# !   ( make the 1st screen the current help screen) |
+       |  BEGIN ( 1st last)                                             |
+       |      .HELP                  ( display the current help screen) |
+       |       KEY                                                      |
+       |       NEXT-HELP#  ( convert the key to a possible next screen) |
+       | ( 1st last new) ?DUP WHILE        ( while screen# is not zero) |
+       |       PUSH 2DUP ( 1st last 1st last)                           |
+       |       R@ ROT ROT BETWEEN           ( ie is new scr# in-range?) |
+       |       R@ HELP# @ -  ( ie is new scr# different from current#?) |
+       |       AND ( 1st last flag)   ( must be in-range and different) |
+       |       POP SWAP ( 1st last scr# flag)                           |
+       |       IF HELP# ! ELSE DROP BEEP THEN  ( 1st last)              |
+       |  REPEAT ( 1st last)  2DROP  ;                                  |
+       |                                                                |
+       |________________________________________________________________|
+
+
+
+
+
+Figure 3.  Excerpts from the Bare Bones EPROM Programmer 
+           Help system, showing the links on the bottom line 
+           of each screen.
+     
+       file EPROM.HLP
+
+       scr # 3000 
+       |                                      How to Use the Help System|
+       |                                                                |
+       |     Use the PgUp and PgDn keys on the numeric keypad to browse |
+       |sequentially through the help screens.                          |
+       |                                                                |
+       |     Some screens have a list of numbered topics.  To jump      |
+       |directly to a topic, press its corresponding number.            |
+       |                                                                |
+       |     Press Esc to get out of HELP and return to the main menu.  |
+       |                                                                |
+       |              1. Overview.                                      |
+       |              2. Copyright Notice.                              |
+       |              3. Index of topics.                               |
+       |              4. Definitions.                                   |
+       |              5. How to Program an EPROM.                       |
+       |00000 03003 03001 03002 03034 03005                             |
+       |________________________________________________________________|
+
+       scr # 3001 
+       |                                                Copyright Notice|
+       |                                                                |
+       |                The Bare Bones EPROM Programmer                 |
+       |                                                                |
+       |     Programs, documentation, and printed circuit board         |
+       |copyright (c) 1992 by Frank Sergeant                            |
+       |                      frank@pygmy.utoh.org                      |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |     Press Esc to get out of HELP.                              |
+       |              1. Index of topics.                               |
+       |              2. Overview.                                      |
+       |              3. Definitions.                                   |
+       |                                                                |
+       |03000 03002 03003 03034                                         |
+       |________________________________________________________________|
+
+       scr # 3002 
+       |                                                 Index of Topics|
+       |                                                                |
+       |                                                                |
+       |       1. Power Supply                                          |
+       |       2. Serial Connector                                      |
+       |       3. Jumpers                                               |
+       |       4. EPROM Types                                           |
+       |       5. Buffers                                               |
+       |       6. How to Program an EPROM                               |
+       |       7. How to Copy an EPROM                                  |
+       |       8. Converting Files                                      |
+       |       9. Diagrams                                              |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03000 03026 03014 03013 03004 03017 03005 03041 03008           |
+       |________________________________________________________________|
+
+       scr # 3003 
+       |                                                        Overview|
+       |       The Bare Bones EPROM Programmer is a simple, menu        |
+       |driven system for programming small EPROMs.  It consists of a   |
+       |programmer board and software that runs on an MS-DOS type       |
+       |computer.  You must supply the proper voltages and, for heavy   |
+       |use, you will want to plug a zero-insertion-force socket into   |
+       |the machined-pin socket.  The programmer board connects through |
+       |a serial cable to COM1 or COM2 of an MS-DOS computer.  A menu   |
+       |system allows you to read, erase, verify, examine, and program  |
+       |EPROMs.  Two jumpers to the right of the EPROM must be set for  |
+       |the proper EPROM type.  The menu system allows you to load      |
+       |from, and to save to, MS-DOS files and to convert to and from   |
+       |various formats (Intel Hex, and Motorola S1-S9), and even to    |
+       |split a file into even and odd bytes.                           |
+       |                                                                |
+       |03001                                                           |
+       |________________________________________________________________|
+
+       scr # 3004 
+       |                                                 Types of EPROMs|
+       |                                                                |
+       |The Bare Bones EPROM Programmer programs these four types of    |
+       |EPROMs:                                                         |
+       |                                                                |
+       |                   2716 ( 2K x 8)                               |
+       |                   2764 ( 8K x 8)                               |
+       |                  27128 (16K x 8)                               |
+       |                  27256 (32K x 8).                              |
+       |                                                                |
+       |These four types will meet the needs of the majority of small   |
+       |microcomputer systems.                                          |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03002                                                           |
+       |________________________________________________________________|
+
+       scr # 3005 
+       |                                         How to Program an EPROM|
+       |                                                                |
+       |  1. Turn off power to the board (Vpp first, then Vcc).         |
+       |  2. Set the 2 jumpers on the board for the current EPROM type. |
+       |  3. Select the EPROM type and programming parameters.          |
+       |  4. Copy the Input File to the File Buffer.                    |
+       |  5. Insert the EPROM.                                          |
+       |  6. Connect power to the board (Vcc first, then Vpp).          |
+       |  7. Re-initialize the board (main menu 23).                    |
+       |  8. Verify EPROM is erased.                                    |
+       |  9. Program and verify EPROM.                                  |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03002 03026 03013 03006 03007 03022 03026 03023 03032 03033     |
+       |________________________________________________________________|
+
+       scr # 3006 
+       |                Select the EPROM type and programming parameters|
+       |                                                                |
+       |  1. Select the EPROM type (main menu 1).                       |
+       |  2. Select pulse width (main menu 2).                          |
+       |  3. Select maximum number of pulses (main menu 3).             |
+       |  4. Set start, end, # with main menu 4-6 or 7-9.               |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03005 03004 09999 09999 03010                                   |
+       |________________________________________________________________|
+
+       scr # 3007 
+       |                          Copy the Input File to the File Buffer|
+       |                                                                |
+       |  1. Select the Input File (main menu 10).                      |
+       |  2. Copy the Input File to the File Buffer (main menu 12).     |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03005 03023 03017                                               |
+       |________________________________________________________________|
+
+       scr # 3008 
+       |                                                        Diagrams|
+       |                                                                |
+       |  1. Component (top) View of Board                              |
+       |  2. EPROM Socket                                               |
+       |  3. The Power Connector                                        |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03002 03009 03011 03012                                         |
+       |________________________________________________________________|
+
+       scr # 3009 
+       |  _____________________________   Component (top) View of Board |
+       | |       TTT                   |  TTT = power connector         |
+       | |  (Gnd,Vcc,Vpp)              |  hhh = 16pin 4049 IC           |
+       | | a  hhh   mmmmmm             |  mmm = 40pim microprocessor IC |
+       | | R  hhh   mmmmmm   (top)     |  eee = 28pin empty EPROM socket|
+       | | G  hhh   mmmmmm   eeeeee j  |  R = red LED                   |
+       | |          mmmmmm   eeeeee j  |  G = green LED                 |
+       | |    bcd n mmmmmm   eeeeee    |  a,b,c,d,f,g,i = resistors     |
+       | |          mmmmmm r eeeeee k  |  n = capacitor                 |
+       | | f        mmmmmm r eeeeee k  |  xtl = ceramic resonator       |
+       | |  g       mmmmmm r eeeeee    |  SS = 9pin serial connector    |
+       | | SS       mmmmmm r eeeeee    |  rrr = resistor network        |
+       | | SS       mmmmmm r eeeeee    |  jj = pgm/Vcc jumper           |
+       | | SS    i xtl       (bottom)  |  kk = A11/Vpp jumper           |
+       | |_____________________________|                                |
+       |03008                                                           |
+       |________________________________________________________________|
+
+       scr # 3010 
+       |                                               Set start, end, #|
+       |                                                                |
+       |Main menu 4, 5, & 6 (for hex) or main menu 7, 8, & 9 (for       |
+       |decimal)  let you specify the starting address, ending address, |
+       |and number of bytes to program.  This lets you program just part|
+       |of the EPROM if you wish.                                       |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03006                                                           |
+       |________________________________________________________________|
+
+       scr # 3011 
+       |The EPROM Socket is the 28-pin socket on the right edge of board|
+       |  1.--\/--.28                                      1 not    28  |
+       |  2|      |27    <--- Here a 28-pin EPROM          2   used 27  |
+       |  3|      |26     fills the entire socket.         3.--\/--.26  |
+       |  4|      |25                                      4|      |25  |
+       |  5|      |24                                      5|      |24  |
+       |  6|  __  |23             Here a 24-pin EPROM ---> 6|      |23  |
+       |  7| |  | |22             fills only the lower     7|  __  |22  |
+       |  8| |__| |21             24 pins, leaving 4       8| |  | |21  |
+       |  9|      |20             empty pins at the top    9| |__| |20  |
+       | 10|      |29             of the socket           10|      |19  |
+       | 11|      |18                                     11|      |18  |
+       | 12|      |17                                     12|      |17  |
+       | 13|      |16                                     13|      |16  |
+       | 14|______|15                                     14|______|15  |
+       |03008                                                           |
+       |________________________________________________________________|
+
+       scr # 3012 
+       |                                             The Power Connector|
+       |        _______ Ground                                          |
+       |       |  _____ Vcc (around 5 volts)                            |
+       |       | |  ___ Vpp (around 12.5 volts, 21 volts, or 25 volts,  |
+       |       | | |         depending on the particular EPROM)         |
+       |      _|_|_|_                                                   |
+       |     | o o o | ( Top view of terminal block at upper left of    |
+       |      -------    the board.)                                    |
+       |                                                                |
+       |     Actually, there are protection diodes between the terminal |
+       |block and the rest of the circuitry.  These drop the voltage by |
+       |about half a volt, so you should supply 5.5 to 6.0 volts to Vcc,|
+       |and around 13, 22.5, or 25.5 volts to Vpp.  The ground          |
+       |connection is common to both power supplies.  The board will    |
+       |operate with just Vcc (and ground) for reading EPROMs.          |
+       |03008                                                           |
+       |________________________________________________________________|
+
+       scr # 3013 
+       |                                                         Jumpers|
+       |To the right of the EPROM socket are two jumpers with 3 pins.   |
+       |For each jumper, connect the middle pin to either the upper or  |
+       |lower pin by pushing a "shorting block" onto the chosen pins.   |
+       |                                                                |
+       |The top jumper is named Vcc/Pgm.  Connect the middle pin to the |
+       |upper for Vcc or to the lower for Pgm.  The bottom jumper is    |
+       |named Vpp/A11.  Connect the middle pin to the upper for Vpp or  |
+       |to the lower for A11.                                           |
+       |                                                                |
+       |For 2716 EPROMs, set the top jumper to Vcc and the bottom jumper|
+       |to Vpp.  For 2764, 27128, and 27256 EPROMs, set the top jumper  |
+       |to Pgm and the bottom jumper to A11.                            |
+       |                                                                |
+       |         1. Diagram of entire programmer board.                 |
+       |03002 03009                                                     |
+       |________________________________________________________________|
+
+       scr # 3014 
+       |                                            The Serial Connector|
+       |The 9-pin female DB-9 connector at the lower left of the board  |
+       |is the serial connector.  You will need a serial cable with a   |
+       |9-pin male DB-9 connector to plug into it.  On the PC-end of the|
+       |cable you will need either a DB-9 or a DB-25 (probably female)  |
+       |connector, depending on your serial port card.  The programmer  |
+       |board needs these 4 signals from the PC's serial port:  ground, |
+       |transmit, receive, and DTR.                                     |
+       |                                                                |
+       |           1. Diagram for connecting DB9 to DB9.                |
+       |           2. Diagram for connecting DB9 to DB25.               |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |                                                                |
+       |03002 03015 03016                                               |
+       |________________________________________________________________|
+

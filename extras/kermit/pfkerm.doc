@@ -1,0 +1,258 @@
+
+                           Kermit in Pygmy
+
+     A Simple Implementation of the Kermit Protocol in Pygmy Forth
+
+                           by Frank Sergeant
+
+Introduction
+
+     Kermit is not only the name of Henson Associates Inc's
+famous frog but also the name of an extensive and complex
+file transfer/remote computer access application written by
+Columbia University and/or volunteers (as I understand it)
+and sold and distributed by Columbia University [1].  The
+name Kermit is also used to refer to the family of file
+transfer protocols used in Columbia University's Kermit and
+by many modem programs.  As I use the term Kermit throughout
+the rest of this article, it refers to the Kermit protocols,
+particularly the simplest form implemented here in Pygmy
+Forth.
+
+     My Forth applications sometime need to transfer files
+with other systems via modem.  I felt I needed to implement
+one or more of the following protocols: XMODEM, YMODEM,
+Kermit, ZMODEM.  The basic XMODEM protocol doesn't have much
+respect these days, as it does not transmit exact file
+lengths, but rounds up to the nearest block size (128
+bytes).  Enhanced versions of XMODEM, such as YMODEM
+overcome this.  Kermit is well thought of and widely
+available.  ZMODEM is usually considered to be the best
+although there seem to be arguments between the kermit and
+ZMODEM camps as to which is the better, faster protocol
+under various circumstances.  I, personally, found the
+ZMODEM arguments more persuasive, but I don't really care
+about minor differences.  I wanted something that worked
+reasonably well and was fairly easy to implement.  Looking
+over the Kermit and ZMODEM protocols, I decided that a
+simple form of Kermit would be slightly easier to program.
+Later, I hope to implement ZMODEM as well.
+
+Why Write My Own
+
+     You may well ask why we insist on writing our own
+version instead of using an existing product.  Indeed, we
+have experimented some with other products and have been
+severely disappointed.  For example, we have had a lot of
+trouble with PCAnywhere trying to get it configured
+correctly under DOS.  On some client systems, we were unable
+to configure it by changing the configuration file in the
+directory PCAnywhere would be run from.  Instead, we had to
+resort to a Rube Goldberg (an extremely cumbersome) approach
+to get the configuration to "take."  We had to modify the
+batch file temporarily so it would not call the PCAnywhere
+script, run the application and let it shell out to
+PCAnywere, change and save the settings, and again modify
+the batch file so it would run the script.  We never found
+just why we could configure it in some offices without going
+through this tedious process but not in most, but it was
+enough to make us hate PCAnywhere.
+
+     Further, while the modem scripts would run under DOS,
+PCAnywhere was too slow.  Also, we could not make the DOS
+versions of the scripts run under the Windows 95 version of
+PCAnywhere.  Also, it was not free and we needed to fool with
+getting each client to purchase PCAnywhere.  Similarly, the
+use of Columbia University's Kermit product would have
+required each customer to purchase a license for it (yes, it
+is NOT free).  Ditto for the Oman Technologies ZMODEM
+product.  So, to hell with the third-party products.  We
+will just write our own, have full control of it, simpler
+installation, and a faster user interface.  Were this
+running under Unix/Linux, we would have used the built-in,
+freely distributable zmodem.
+
+The Kermit Protocol
+
+     My main guide for the Kermit protocol was _C
+Programmer's Guide to Serial Communications_ by Joe Campbell
+[2].  Note, there are some errors in Campbell's examples.
+
+     Files are transferred in Kermit by exchanging "frames"
+between the sender and the receiver.  Every frame begins
+with an SOH (start of header) character and ends with a
+carriage return.  Between them are the following five
+fields: length, sequence, type, data, checksum.  Each
+field except for the data field is a single character in
+printable form.  The process of converting a number, say
+for the length field, into a character, is called
+"character-ization" and is done by adding the value of
+the space character to the number.  Thus, the number zero
+becomes $20 and prints as a space.  The number thirty-seven
+(i.e. $25) becomes $45 and prints as the letter "E" and so
+forth.  I use the words CHAR and UNCHAR to convert between
+the two formats.  Note this requirement of fitting numbers
+into a single byte as a printable character limits the
+numbers to the range zero to 94 and limits the size of
+frames that can be transmitted.  Various extensions to the
+basic Kermit protocol allow longer frames, but not the
+simple form described here.
+
+     The frame types used are S to initiate a file transfer
+session, F to send a file name, D to send a data frame,
+Z to indicate end of file, B to indicate end of
+transmission, E to indicate a fatal error, A to send file
+attributes (we do not use this one), Y to ack a frame, and
+N to nak a frame.  No single bytes are exchanged between the
+sender and receiver, only whole frames.  The length field
+indicates the number of bytes to follow the length field up
+to and including the checksum field, but not the carriage
+return.
+
+     To transfer a file, the sender waits for an N-frame (a
+negative acknowledgement), then sends an S-frame to tell the
+receiver what values it wants to use for various protocol
+parameters, such as maximum frame length, the repeat
+character, the escape character, etc.  The receiver then
+sends a Y-frame (an acknowledgement) with its preferred
+values for these parameters.  The word COMPROMISE takes the
+more conservative value for each of the parameters.  This
+single exchange of frames sets the protocol parameters for
+the session.  In the S-frame and its Y-frame, the values of
+the parameters are sent in a fixed-order in the frames' data
+fields.
+
+     Kermit has two major ways of converting bytes before
+transmitting them.  One is the "character-ization" already
+mentioned, for converting numbers.  The other is
+"controlification" to flip a bit in a control character to
+turn it into a printable character.  Numbers, as such, are
+expected in the length and sequence and checksum fields, but
+never in the data field (except during the initial S and Y
+frames that establish the protocol parameters).  Kermit
+would allow for transmitting 7-bit data bytes by escaping,
+with an ampersand, each byte with a high bit set and then
+clearing that high bit, but we do not do this.  We assume
+the availability of an 8-bit channel.  Kermit does insist,
+though, on escaping control characters (with "#") and at
+least some implementations insist on compressing data by
+run-length encoding repeated bytes.  "#" and "~" characters,
+when appearing in the data as themselves, must be escaped.
+Thus a single "#" would appear in the data field as "##".
+
+     To keep things simple, we never compress the data when
+we are sending a file.  Unfortunately, not all
+implementations of Kermit respect the request not to use
+repeat counts.  Therefore, we must be prepared to handle
+compressed data when receiving a file.  (Since our main
+purpose in using Kermit is to transmit zip files, it doesn't
+look like we would gain much speed by compressing the data
+we send.)
+
+     Kermit allows various types of checksums, ranging from
+a single byte to three bytes.  Our main use will be to
+transmit zip'd files, with the zip file itself providing an
+additional level of data integrity verification with its
+32-bit CRC, therefore, I am content to use a 1-byte
+checksum, the simplest form Kermit allows.
+
+The V-frame
+
+     We invent a special input frame and assign it type V.
+A V-frame is never actually sent.  Instead, whenever a
+timeout occurs, KSER-IN terminates (_and_ terminates its
+caller GETFRAME) and returns a V-frame.  This way, a timeout
+is not a special case, but just an ordinary "frame."
+
+What Else Can Go Wrong
+
+     In addition to a timeout, a frame with a bad checksum
+might be received.  In this case, we send an N-frame to
+alert the sender so it will try again.  If we are receiving
+and a frame is lost, the V-frame alerts us to the missing
+frame and we again send an N-frame to request a repeat.
+When sending, if a frame is lost or its Y-frame is lost,
+either a timeout or receipt of an N-frame alerts us to the
+need to resend that frame.  When we receive a duplicate
+frame (perhaps because our Y-frame never reached the
+sender), we basically ignore it.  However, we do acknowledge
+it so the sender will be free to continue.  The progress of
+a file transfer is indicated on-screen by the printing of a
+dot for each frame transferred.  Our code will wait forever
+attempting a transfer unless it is cancelled by the user or
+unless it receives an E-frame indicating a fatal error.
+
+The Environment
+
+     This implementation expects the SER-IN, SER-OUT and
+related words that allow transmitting and receiving to and
+from the serial port connected to a modem.  "The PC Serial
+Port in Forth" [3] describes one approach to handling the
+serial port on a PC using interrupts.
+
+     My current approach does not use interrupts.  Instead,
+it uses the new multi-tasking ability of the upcoming Pygmy
+version 1.5.  The serial input is serviced by a separate
+task, thus greatly simplifying the serial port code.
+
+     The Kermit code presented here should work regardless
+of which form of serial handling is used.
+
+How to Transfer Files
+
+     Assuming the modem connection has been made and the
+other end is expecting to send or receive the file using
+Kermit, type " filename.zip" SEND to send a file, or type
+RECEIVE to receive a file.  The RECEIVE routine is capable
+of receiving multiple files.  The SEND routine transmits a
+single file.  Since Pygmy 1.5 accepts instructions from
+the command line, you could type
+
+           PYGMY " filename.zip" SEND BYE
+
+on the DOS command line or in a batch file, etc.  In our
+application, we have a menu and a terminal mode with PgUp
+and PgDn keys invoking the SEND and RECEIVE routines.  You
+can see a clue as to how we use this in the definition of
+KSER-IN on block 12007 where a user abort of the file
+transfer executes the DEFER'd word MYMENU to put the user
+back at the application menu.
+
+Conclusion
+
+     This code has been used successfully at a number of
+client sites, but, remember, it uses only a very basic
+version of the Kermit protocol.  It very well could have
+problems transferring between certain sites.  If you try it
+out, please let me know your results.  The files are available
+in Pygmy version 1.7 from http://pygmy.utoh.org.
+
+References
+
+    [1] "Kermit: A File-transfer Protocol for Universities,"
+parts 1 and 2, Frank da Cruz and Bill Catchings, June and
+July, 1984, Byte magazine.
+
+    [2] _C Programmer's Guide to Serial Communications_, Joe
+Campbell, Howard W. Sams & Company, 1987, ISBN
+0-672-22584-0, pp 98-113.  Note, there are some errors in
+Campbell's examples.
+
+    [3] "XT Corner: The PC Serial Port in Forth," Frank
+Sergeant, _The Computer Journal_, issue 79, Fall 1996,
+pp 5-10.
+
+
+Author's Bio
+
+     Frank Sergeant, on the "thirty year plan," received his
+Master of Science in Computer Science degree from Southwest
+Texas State University.  The degree and his 4.0 GPA were
+hard won.  His thesis was entitled "Calculating the Crust of
+a Set of Points in C++" and has nothing to do with Forth
+except to help illustrate that computational geometry is
+easier in Forth than in C++.  He can be reached at
+frank@pygmy.utoh.org.
+
+
+                           END

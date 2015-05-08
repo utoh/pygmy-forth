@@ -1,0 +1,143 @@
+                 68HC11 Assembler, version 2
+
+            Copyright 1989,1997,2007 Frank C. Sergeant.
+
+For license, see the license20040130.txt file included with the Pygmy
+Forth version 1.7 or http://pygmy.utoh.org/license.html.
+
+
+This is a Forth-style assembler designed to run under Pygmy 
+Forth (v1.4 or above) on an IBM PC or clone.  It generates 
+machine code for the Motorola 68HC11 microprocessor.  It is 
+easily adapted to run under Pygmy on the 68HC11. 
+     
+
+ ----------------------------------------------------- Files
+
+There are three associated files:
+  1. 6811ASM.DOC     -  the text file you are now reading
+  2. 6811ASM.SCR     -  the Forth block file that contains
+                        the source code.
+  3. 6811ASM.DOW     -  the Forth block file that contains 
+                        the shadow (documentation) blocks.
+
+
+ ------------------------------------ Changes from Version 1
+
+Version 1 did not generate correct machine code for some 
+addressing modes of the "weird" instructions, such as the 
+extended addressing mode of STX, and STY,.  Hopefully, this 
+has been fixed in version 2.
+
+Version 1 kept the mode information in a variable.  Version 
+2 keeps the mode information on the stack.  Related to this 
+change, you must now indicate extended mode with #) 
+discussed below.
+
+In Version 1, if no mode indicator was used, the extended 
+mode was used by default.  In this version, each of the 
+modes (immediate, extended, direct, indexed by X, indexed by 
+Y) must be explicitly indicated.  The symbol  #)  is used to 
+indicate extended mode.  This comes to me from an article 
+written by Charles Curly, I believe, where he describes this 
+as meaning "immediate indirect," which conveys the essence 
+of the mode very well, at least to me.  See examples below 
+under Modes.
+
+The ordering of the operands for BRCLR, BRSET, BCLR, & BSET,
+have changed.  Now, the mask must precede the address of the 
+operand to be tested or altered.
+                                                           
+
+ ------------------------------------------------ Byte Order
+
+The 68HC11 and the 80x86 use different byte orders for 
+16-bit quantities.  Thus, this assembler uses W, to comma in 
+(comma down?) each byte of a double-byte in the correct 
+order.  W, looks to the constant INTEL to see what to do.  
+INTEL should have the value -1 (true) when the assembler is 
+running on a PC, but 0 (false) when the assembler is running 
+on the 68HC11.
+
+This assembler should also work for the 6800, 6802, 6808, 
+6801, and 6803, providing you do not use extra features 
+present only in the 68HC11.  In other words, the 68HC11's 
+instruction set is a superset of the instruction sets of the 
+6800, 6802, 6808, 6801, and 6803.
+
+
+ ------------------------------------- Instruction Mnemonics
+
+The assembly mnemonics typically end with a comma.  This 
+serves three purposes.  It distinguishes the assembly 
+language versions of words such as BEGIN, AGAIN, IF, #, from 
+the similarly named Forth words.  Also, it suggests they 
+"comma" something (namely machine code) into the dictionary.  
+The comma also marks the end of a series of words related to 
+a single instruction, although the immediate mode symbol is 
+an exception to this: it ends in a comma, but does not 
+indicate the end of a phrase belonging to a single 
+instruction.  Perhaps renaming  #,  to  ##  would be better.
+
+Motorola made an error in suggesting that the mnemonics for 
+loading and storing accumulators A & B should be LDAA, LDAB, 
+STAA, & STAB.  (Of these, though, STAB -- it sounds so 
+violent -- is my favorite.)  Clearly the superfluous middle 
+"A" (which stands for "accumulator") should be omitted.  
+Thus, this and all other right-thinking assemblers use LDA, 
+LDB, STA, STB, instead.  Motorola implicitly admits this 
+error by their choice of mnemonics for the load accumulator 
+D and store accumulator D mnemonics, i.e. LDD and STD.  (I 
+should consider factoring out the registers and shortening 
+the mnemonic to just L or S, as in  $FF #, A L, but am not 
+prepared to go that far at the moment.)
+
+
+ ---------------------- Urges I Have Resisted for the Moment
+
+Using lower case for the mnemonics, and factoring the 
+register names (e.g.  $45 #, b ld,  $1234 #) x st, instead 
+of $45 #, LDB,  $1234 #) STX,) were resisted.
+
+
+ ----------------------------------------------------- Modes
+
+Each mode, other than inherent, must be indicated 
+explicitly.  Here are some examples:
+
+     $FF #, LDA,     ( load immediate into the A register)
+   $1234 #, LDX,     ( load immediate into the X register)
+   $1234 #) LDX,     ( extended mode, ie load X from the 
+                       contents of address $1234 & $1235)
+    $34 DIR LDX,     ( direct mode, ie load X from the
+                       contents of address $0034 & $0035)
+       7 ,X LDA,     ( indexed by register X, ie load 
+                       register A from the byte whose 
+                       address is 7 plus the contents 
+                       of register X)
+      15 ,Y STB,     ( indexed by register Y, ie store 
+                       register B into the byte whose 
+                       address is 15 plus the contents 
+                       of register Y)
+
+The unusual convention here is how extended mode is 
+specified.  Watch out for this until you get used to it.
+Also, special attention must be paid to the instructions 
+BRCLR, BRSET, BCLR, & BSET,.  See the source and shadow 
+blocks for info on this.  After loading the assembler, type 
+V BRCLR, to jump into the editor at the location of the 
+source code for the BRCLR, instruction, then press Ctrl-A to 
+move back and forth between the source block and the shadow 
+block.  You can do this with any any instruction you need 
+more information about.
+
+
+ ---------------- Bug Reports, Comments, & How to Contact Me
+
+If you find any case where this assembler fails to generate 
+the correct 68HC11 machine code, please send the details to 
+me by email at frank@pygmy.utoh.org.
+
+
+
+                             END

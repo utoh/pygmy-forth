@@ -1,0 +1,42 @@
+3-Instruction Forth for the 'HC11
+
+
+This package is copyright 1994-1997,2007 by Frank Sergeant.
+
+(minor updates to packaging, license, addresses, etc April, 2007)
+
+For license, see the license20040130.txt file included with the Pygmy
+Forth version 1.7 or http://pygmy.utoh.org/license.html.
+
+
+MONITOR.TXT
+
+     is a copy of my 3-Instruction Forth article that appeared in
+     the 1991 FORML Conference Proceedings (published by the
+     Forth Interest Group).
+
+MOND0.SCR
+MONA1.SCR
+MONE1.SCR
+
+     contain the source code for the 3-instruction Forth for
+     3 variants of the Motorola 68HC11 microprocessor.  The minor
+     differences relate to where the different versions of the
+     microprocessor map their memory-mapped registers and to how
+     they expect to receive their initial program load in the
+     bootstrap mode.  The monitors included here take
+     up even less space in the 'HC11's memory than the original
+     version in the article.  (In specialized cases, I have
+     reduced the size of the monitor even further -- down to
+     only 32 bytes.)
+
+
+DEMO.SCR
+
+     contains a small demonstration of how the 3-instruction
+     Forth might be used to control i/o lines.
+
+
+Frank Sergeant
+frank@pygmy.utoh.org (permanent email address)
+http://pygmy.utoh.org

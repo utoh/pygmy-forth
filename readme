@@ -1,0 +1,29 @@
+This is the Pygmy Forth version 1.7 which may be used and distributed
+freely.  See the license in license20040130.txt or at
+http://pygmy.utoh.org/license.html.
+
+It runs on the IBM PC and clones and emulators such as DOS, Microsoft
+Windows, FreeDOS and the DOS emulator under Linux, etc.  It includes a
+multi-tasker and the ability to call C library routines and vice
+versa.
+
+To use it, create a directory for it and unzip
+PYGMY17.ZIP into that directory, e.g.
+
+          C:
+          CD \
+          MD PYGMY
+          CD PYGMY
+          COPY A:\PYGMY.ZIP
+          UNZIP PYGMY.ZIP
+
+You can use any unzip program.  I use the InfoZIP unzip.
+
+Then, read the manual, PYGMY.TXT.
+
+  -- Frank
+  May, 2007
+
+  Frank Sergeant
+  frank@pygmy.utoh.org
+  http://pygmy.utoh.org

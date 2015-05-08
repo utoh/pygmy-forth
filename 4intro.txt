@@ -1,0 +1,422 @@
+     The following article, with perhaps a minor change or two, 
+appeared in the July/Aug '91 issue of _The Computer Journal_.  
+See my web site for a link to TCJ.
+
+[ my addresses updated April, 2007 ]
+
+
+                     A SHORT INTRODUCTION TO FORTH   
+
+
+copyright 1991 Frank Sergeant 
+               frank@pygmy.utoh.org
+               http://pygmy.utoh.org
+
+
+
+
+
+                A SHORT INTRODUCTION TO FORTH
+
+                      by Frank Sergeant
+
+
+*The Forth System
+
+     Forth is easy to grasp once a few things are explained.  
+First, keep in mind three of the parts of a Forth system: 
+the stack, the dictionary, and the input stream.  Numbers go 
+on the stack.  Named, executable routines go in the 
+dictionary.  Characters you type from the keyboard (forget 
+the disk for now) go into the input stream.
+
+*Interpreter
+
+     Forth stuffs keystrokes into the input stream until you 
+press return, then it interprets that input stream one word 
+at a time.  It takes each word and tries to look it up in 
+the dictionary.  If found in the dictionary, the word is 
+executed.  Otherwise, Forth tries to convert it to a valid 
+number.  If it can do so, it pushes the number to the stack.  
+Otherwise, it reports an error.  When the input stream is 
+empty, Forth starts over collecting keystrokes and then 
+interpreting them. 
+
+*The Stack
+
+     Numbers are kept on the stack.  Sometimes this is 
+called the data stack or the parameter stack.  It is the 
+central clearing house for numbers.  Every word that needs 
+numeric input knows where to find it: on the stack.  Every 
+word that supplies numeric output knows where to deliver it: 
+to the stack. 
+
+*Words
+
+     The basic unit of Forth is the _word_.  A word is any 
+group of characters separated by white space (one or more 
+spaces or carriage returns).  Thus, there are seven words on 
+the following line: 
+     @     !    12345    DUP    SWAP    :     ZZQQDI
+
+     Forth words are _active_.  They don't _mean_ something; 
+they _do_ something.  That is, they are not symbols the 
+compiler or interpreter looks for to determine what to do.  
+Instead, each Forth word just plain _does_ it.  For example, 
+the Forth word  +  (pronounced "plus") is not a symbol 
+indicating addition should be done; it _does_ the addition.  +  
+removes the top two numbers from the stack, does the 
+addition, then puts the sum onto the stack. 
+
+     This active nature of Forth words is a key concept.  It 
+gives Forth much of its modularity and power.  Each little 
+piece in a Forth program is an active, independent unit. 
+
+     Even Forth's comment indicator, the left parenthesis, 
+is active.  It doesn't signal a comment, it actively gobbles 
+up the input stream until it finds a right parenthesis.  
+Thus, comments start with a left parenthesis followed by at 
+least one space. 
+
+*Numbers
+
+     How, you might ask, do those two numbers get onto the 
+stack in the first place?  The answer, from  the viewpoint 
+of  +  is that it doesn't care!  This is important because it 
+eliminates dependencies and side effects between words.  
+But, even if  +  doesn't care, you might.  There are several 
+ways to get numbers on the stack.  Earlier words can put 
+numbers on the stack, or, you can just type them.  Remember 
+the 3-way process of the interpreter?  When it can't find 
+the word in the dictionary, it tries to convert it to a 
+number and put it on the stack.  So, typing   3  4  would 
+put those two numbers on the stack. 
+
+     Isn't "reverse Polish" difficult?  No, no, this 
+"postfix" is very simple.  It just means the operator (the 
+active Forth word, for example) follows its operands.  This 
+is how to add 4 and 7: 
+
+               4  7  +
+
+The  +  would remove the 4 and 7 from the stack and return 
+an 11 to the stack. 
+
+     Many Forth words take two operands.  In some cases like  
++  and  *  and  AND  their order makes no difference.  In 
+others, such as   -  and  /  the order of operands is very 
+important.  It is easy to get the order right by remembering 
+that it is the _same_ as you are used to.  The only difference 
+is the location of the operator; the order of the operands 
+remains the same.  For example, the algebraic  15 / 3 would 
+be written in Forth as   15 3 /  meaning in both cases to 
+divide 15 by 3, giving 5 as the quotient.  This is called 
+"postfix" because the operator comes after the operands, 
+rather than "infix" where the operator goes in between the 
+operands.  In a similar manner,   7 3 -  is the Forth way of 
+subtracting 3 from 7. 
+
+*Programs
+
+     In Forth, rather than just writing a program, you 
+extend your system by building tools to make writing your 
+program easier.  Finally, your program can be written in one 
+or two lines.  More powerful words are built up from simpler 
+words.  These new words, in turn, are used in the definition 
+of other words.  As you progress you customize the language 
+to the specific task at hand.  Each word is simple and can 
+be tested easily from the keyboard, making testing a dream 
+instead of a nightmare. 
+
+     Forth systems come with many words already defined in 
+the dictionary.  These include words that allow you to 
+define your own additional words.  The word  :  (pronounced 
+"colon") puts a new word into the dictionary.  For example, 
+suppose you want to define a word named  3*  to multiply a 
+number by 3.  Here is what to type in 
+
+         : 3*    3  *  ;
+
+The  :   creates a dictionary entry for the new word  3*  
+and then compiles the following words up to the semicolon.  
+The word following colon, ie  3* , becomes the name of the 
+new word.  The rest of the words, namely  3  and  *  are 
+laid down in the dictionary as the actions that the word  3*  
+will perform. 
+
+     Now that  3*  has been added to the dictionary, you can 
+type    17  3*  .  The  3*  will put a 3 on the stack, then 
+consume the 17 and the 3, and leave 51 on the stack.  This 
+new word is a full citizen.  It is indistinguishable from 
+words in the dictionary that came built in.  It behaves just 
+like the rest of the Forth words: it takes its arguments 
+from the data stack and puts its results back onto the data 
+stack.  This feels different from languages where the 
+functions and procedures and subroutines are second class 
+citizens.  There are no "reserved words" in Forth. 
+
+*Stack Comments
+
+     When a new word is defined it is helpful to show a 
+picture of its effect on the stack.  This is called a stack 
+comment.  It is usually placed inside a comment within the 
+new word's definition.  The left side shows the "before" 
+condition of the stack, ie what the word expects on the 
+stack.  The right side shows the "after" condition, ie what 
+the new word leaves on the stack.  There must be some 
+separator so you can tell where the "before" ends and the 
+"after" begins.  I use a single hyphen as the separator, 
+some people use a double hyphen.  Don't confuse this with a 
+minus sign or Forth's subtract word.  Since the stack 
+comment _is_ a comment, you can write it any way you wish as 
+long as you follow the left parenthesis with at least one 
+space.  Here is the definition of  3*  rewritten to include 
+a stack effects comment: 
+
+         : 3*  ( n - 3*n)    3  *  ;
+
+     When you know the stack action of a word, you 
+know everything (within reason).  In the above example, n 
+represents any number and 3*n represents three times that 
+number.  Sometimes throughout the definition you'll find 
+additional comments showing what is on the stack at that 
+point.  If the stack picture gets too complex, perhaps the 
+programmer should break the definition into several smaller, 
+simpler definitions. 
+
+*Building Blocks
+
+     A Forth word can be thought of as both a program and a 
+subroutine.  You can execute it from the keyboard or you can 
+use it as a building block within another word.  Contrast 
+this with the difficulty of testing a single procedure or 
+subroutine in most languages. 
+
+     There is no distinction between words built in to the 
+system, words you add, programs, subroutines, etc.  In Forth 
+they are all just _words_, and can be executed from the 
+keyboard or as part of the definition of another word.
+
+     This means several important things.  It means a Forth 
+system can have a number of "programs" available in memory 
+for immediate use.  Often Forth can serve as a self-
+contained environment, allowing immediate access to the 
+editor, assembler, debugging tools, plus all the routines 
+you've defined.  
+
+     This ability to exhaustively test each little piece 
+from the keyboard adds robustness (and flavor).  That is, 
+you build programs on a solid foundation of tested and 
+certified elements.  Proper Forth programming style is to 
+build your program as small, easily tested pieces.  Don't 
+write huge procedures, as we often see in Pascal, for 
+example.  Ideally, each word's definition will take a single 
+line, as in the  3*  example.  
+
+     These little pieces are reusable.  As you program you 
+gradually customize the language to suit exactly what you 
+want to do. 
+
+*Funny Names
+
+     Frequently used Forth words are usually short.  This 
+makes them easy to read and type.  But, until you know what 
+they mean they can stand in the way of your understanding 
+Forth source code.  You need a glossary you can refer to.  
+C@  C!  @  and  !  are four examples.  They are pronounced 
+"C-fetch," "C-store," "fetch," and "store."  The first takes 
+an address from the stack and returns the byte value located 
+at that address.  It is similar to PEEK in BASIC.  The 
+second takes a byte value and an address and stores the 
+value at the address, rather like POKE in BASIC.  The "C" in  
+C@ and C! stands for "character" and indicates byte size 
+values.  @  &  !  work the same way, but with 16-bit
+values.  
+
+     The  .  (pronounced "dot") is a word that takes a 
+number off the stack and displays it.  Thus, the dot is 
+associated with printing or displaying.  Often it is used in 
+the names of words that have something to do with displaying 
+or printing.  For example, the word  ."   ("dot-quote") 
+prints a string up to the ending quote mark.  It is similar 
+to PRINT" in BASIC. 
+
+*IF THEN WHAT? 
+
+     Some people seem to have trouble with Forth's IF ... 
+ELSE ... THEN construction.  It is really very simple, for 
+example:
+
+    : TRUE?  ( flag -) IF ." YES" ELSE ." NO" THEN  ;  
+
+IF  is an active word that takes a number off the stack.  If 
+the number is "true" (ie non-zero), then the part between  IF 
+and  ELSE is executed, otherwise the part between  ELSE  and 
+THEN  is executed.  THEN  marks the end of the entire 
+structure, where both paths converge.  If it gives you 
+trouble, read THEN as "end-if."
+
+*Loops
+
+     Loop structures of one sort or another are usually 
+pretty obvious, if you remember that  WHILE  &  UNTIL  each 
+take a truth value off the stack to decide whether to branch 
+or not. 
+
+     There are two main counted loop structures in Forth.  
+These days I only use  FOR ... NEXT.  For example, 
+
+          : STAR ( -)   ." *"  ;
+          : STARS ( n -)  FOR  STAR  NEXT  ;
+          7 STARS    *******
+
+It works much like you'd expect it to.  In some Forths  7 
+STARS would print 7 stars and in others it would print 8 
+stars.  Hopefully the ones that print 8 will change their 
+ways.  
+
+     The other is  DO ... LOOP as in
+
+          : STAR ( -)  ." *"  ;
+          : STARS ( n -)   0 DO  STAR  LOOP  ;
+          7 STARS *******
+
+The difference is that FOR ... NEXT takes a single number 
+and DO ... LOOP takes a limit and a starting number. 
+
+                     Stack Manipulation
+
+     Sometimes we need to re-arrange the numbers on the 
+stack.  Forth has a collection of words to manipulate the 
+stack, such as the following:  DUP copies the top item,  
+DROP throws away the top item, SWAP reverses the positions 
+of the top two items, ROT moves the third item to the top 
+(thus ROT ROT ROT would leave the stack unchanged).  Here's 
+another way to define  3*  that uses  DUP
+
+ : 3*  ( n - 3*n)  DUP DUP ( n n n)  + ( n  2*n) +  ( 3*n) ;
+
+                    A BASIC Rosetta Stone
+
+     Here are some sample Forth phrases with their 
+equivalents in BASIC: 
+
+." HELLO "                 PRINT "HELLO";
+
+3 .                        PRINT 3;
+
+TEST                       GOSUB TEST
+
+3 7 + .                    PRINT 3+7
+
+3 FOR ." H"  NEXT          FOR I=3
+                             PRINT"H";
+                           NEXT I
+
+( This is a comment)       REM This is a comment
+
+KEY EMIT                   100 LET A$=INKEY$:IF A$=0 THEN 100
+                           120 PRINT A$;
+
+KEY .                      100 LET A$=INKEY$:IF A$=0 THEN 100
+                           120 PRINT ASC(A$);
+
+VALID? 
+IF RTNA ELSE RTNB THEN     IF VALID THEN GOSUB RTNA
+                                ELSE GOSUB RTNB
+
+3721 C@ .                  PRINT PEEK(3721);
+
+65 3721 C!                 POKE 3721,65
+
+
+*Speed and Assembly Language
+
+     Forth is the fastest language.  Bear with my little 
+joke.  In high-school, a friend was a sports car enthusiast.  
+He said no matter how fast your car was, a cop car was 
+always faster -- because it had this special speed device -- 
+called a "Motorola."  By that he meant the two-way radio 
+whereby the cop could radio ahead.  How does that make Forth 
+the fastest language?  Well, it really only makes it equal 
+to the fastest.  In Forth it is very easy to drop down to 
+assembly language any time greater speed is needed.  It is 
+almost never the case that every part of a program needs to 
+run flat out.  Usually there are one or two key routines 
+that make or break the program, speed-wise.  One of the 
+beauties of Forth is you can code the whole program, without 
+using assembly language, and test it.  When it is working, 
+you replace those few key routines with assembly language if 
+you really need greater speed.  The program looks and works 
+the same.  No special calling conventions are needed. 
+
+     So, suppose it turns out that  3*  is the bottle neck 
+in your program.  If only it were faster all would be well.  
+You could re-write it in 8088 assembly language as follows: 
+
+       CODE  3*   ( n - 3*n) 
+         BX AX MOV,   BX BX ADD,   AX BX ADD,    NXT,
+        END-CODE
+
+     Don't worry too much about the assembly language.  I 
+just want to get across the general idea.  CODE and END-CODE 
+correspond to the beginning colon and ending semi-colon of 
+colon definitions.  The definition is short!  This aids 
+immeasurably in testing assembly language routines.  3*  
+will appear in the dictionary just like it did when defined 
+as a colon definition.  All the other words that call  3*  
+will work the same.  They won't know the difference.  Also, 
+3* can still be tested directly from the keyboard.  If you 
+have to deal with assembly language, this is the way to do 
+it. 
+
+     For the curious I'll explain the parts of the code 
+definition above.  It is written for Pygmy Forth, which 
+keeps the top of the data stack in register BX.  The 
+assembly mnemonics end in commas.  You can think of the 
+comma as marking the end of a phrase, thus  BX AX MOV, is 
+one instruction.  The source register and destination 
+register are arranged left to right as god and Motorola 
+intended.  Thus, the first instruction copies the top stack 
+item to the AX register, because we'll need it in a minute.  
+Then, the BX BX ADD, instruction doubles the top stack item.  
+This is the same as multiplying it by 2.  The AX BX ADD, 
+instruction adds the original value to BX, giving just what 
+we want,  3 times the original value.  Since the whole word 
+consumes one stack item and returns one stack item, and 
+since Pygmy keeps that stack item in register BX, the final 
+result is right where we want it in the top stack item.  The 
+last "instruction" NXT, is actually an assembly language 
+macro defined in Pygmy to lay down the code that will move 
+to the next word to be executed. 
+
+     The assembly language will differ from Forth to Forth 
+and especially from processor to processor.  It is less 
+portable and more trouble than high-level Forth, but is very 
+easy compared to most other methods of dealing with assembly 
+language!  If you want to do everything in assembly, you 
+could think of Forth as an interactive assembly language 
+subroutine manager, allowing you to test each little 
+subroutine from the keyboard. 
+
+*You Try It
+
+     Practice makes perfect.  Try reading some Forth and see 
+if it makes more sense to you now.  If you want a Forth to 
+practice with on the IBM PC/XT/AT/386 you can get my 
+shareware Pygmy Forth version 1.3 from the Forth Interest 
+Group (FIG) at (408) 277-0668 or from finer bulletin boards 
+everywhere.  If you get it from FIG be sure to ask for a 
+free quick reference card as well.  If you have specific 
+questions, you can reach me c/o TCJ or on GEnie as 
+F.SERGEANT, and I'll try to answer directly or via TCJ or 
+both.  [Ignore these old addresses, of course.  Pygmy is 
+now at version 1.7 and available from http://pygmy.utoh.org]
+
+
+
+
+
+                             END
+                          
+

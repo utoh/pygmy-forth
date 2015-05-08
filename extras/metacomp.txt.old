@@ -1,0 +1,396 @@
+copyright 1991 Frank Sergeant 
+               frank@pygmy.utoh.org
+               http://pygmy.utoh.org
+
+
+[ address above update April, 2007 ]
+
+     The following article, with perhaps a minor change or two, 
+appeared in the March/April '91 issue of _Forth Dimensions_, published
+by the Forth Interest Group.  Contact them at P.O. Box 2154, Oakland,
+CA  94621, or (510) 89-FORTH (voice), or (510) 535-1295 (fax) in 
+order to subscribe or join or order books.  [See my web site for
+current address information for the Forth Interest Group.]
+
+               
+
+                   METACOMPILATION MADE EASY 
+
+                      by Frank Sergeant
+
+
+
+
+
+     Metacompilation prowls the narrow alleys of Forth, 
+lurking in the shadows, scaring the children.  Does the 
+monster really exist or is it just a legend?  (Eerie music.)  
+It's nearly midnight, wanna go out and look for it, huh?  
+Get the flashlight, a fifth of Scotch, a 12 gauge shotgun 
+and come with me.  Don't be afraid.  Here, let me hold the 
+shotgun.  No, no, after _you_ .
+
+     The flashlight is all we need.  Metacompilers can be 
+monsters, but shining a little light on them should dispell 
+the terror.  We'll take a look at them in general and also 
+discuss a specific, simple version from Pygmy Forth.  But 
+first ... 
+
+                      What Is A Compiler? 
+
+     A compiler is a program that  lays down  code and data 
+that matches your source code.  It is usually thought of as 
+a translater that converts source code into machine code.  
+It might be more helpful, though, to think of it as 
+something that steps through memory, byte by byte, filling 
+in whatever should be put there.
+
+     Most languages have  a  compiler.  Forth has  many  
+compilers.
+
+     The most basic compilers in Forth are  C,  ("C-comma") 
+and  ,  ("comma").  They take numbers from the stack and lay 
+them down at the next free byte or word in the dictionary 
+(and then increment the dictionary pointer).   :  ("colon") is 
+the most commonly used compiler in Forth.  It uses  C,  and  ,  
+to lay down bytes and words into the dictionary as it 
+compiles new definitions.  This is usually done in a number 
+of steps, with the help of various compiling words, each of 
+which does its part.  For example,  IF  starts an  IF ... THEN  
+structure by laying down a conditional branch.   THEN  
+completes the branch.   VARIABLE  and  CONSTANT  are other 
+familiar Forth compilers.  Ultimately, they all rely upon  ,  
+and  C,  to get those bytes laid down. 
+
+                    How Forth Is Different 
+
+     Most other languages completely separate the compiler 
+itself from the result of the compiler.  You take source 
+code, feed it into the compiler, and get object code.  The 
+object code is later executed independently of the compiler.  
+Forth is different in that,  usually , its compilers  extend  
+the current Forth system rather than creating an independent 
+system.  Your new definitions are added to the definitions 
+that are already present.
+
+                   What Is Metacompilation? 
+
+     Simply put, metacompilation is the process of making 
+Forth do what other languages do all the time: generate an 
+independent system.  The fancy name probably contributes a 
+lot to the confusion.  When you extend the dictionary in 
+Forth you call it compilation.  When you generate an 
+independent system with Forth you call it metacompilation.  
+(In most other languages, the only thing you  can  do is 
+generate an independent system.) 
+
+     Come on, there's got to be more to it than that, you 
+say?  Well, ok.  The "meta" means self-referencing.  In 
+other words, when what you compile is  another Forth system  
+its called metacompilation.  Using the same logic, if you 
+used a C compiler to compile another C compiler you could 
+also call it metacompilation.  (As an aside, you don't 
+often hear of that, do you?  No!  Forthers are almost the 
+only people generally willing to build their own systems.  
+Of course, some might say we're the only ones who need to.) 
+
+                      Target Compilation 
+
+     Well, the above explains where "meta" originated, but 
+it isn't the full story.  Another term, "target compilation" 
+complicates things slightly.  What if you want to generate 
+an independent system that is  not  a Forth system, perhaps a 
+short utility program?  In that case, you might call it 
+target compilation instead of metacompilation.  What if you 
+use your Forth system to generate independent code designed 
+to run on a different processor?  Its "target" is the other 
+processor, so clearly this would be target compilation.  
+But, what if that independent system, designed to run on the 
+other processor, is another Forth system?  Is it target 
+compilation, metacompilation, or meta-target-compilation?  
+I don't think this leads anywhere, so I suggest we just use 
+the word metacompilation for all cases where an independent 
+system is generated. 
+
+                       Other Definitions 
+     
+     By target system or dictionary we mean the result of 
+the metacompilation.  By host system or dictionary we mean 
+our regular Forth system.  By the way, in cmFORTH and Pygmy, 
+ \  is used instead of  [COMPILE]  -- it does not indicate a 
+comment.   PUSH  &  POP  are used instead of  >R  &  R> . 
+
+                    Uses of a Metacompiler  
+
+     Here are the main uses I can think of for a 
+metacompiler:
+
+            1. Use your current Forth system to make a 
+        slightly changed version of itself to run on the 
+        current hardware. 
+        
+            2. Use your current Forth system to make a new 
+        (perhaps drastically different) Forth system to run 
+        on the current hardware. 
+
+            3. Use your current Forth system to make a new 
+        Forth system to run on a different processor or 
+        operating system. 
+
+            4. Use your current Forth system to make a 
+        stand-alone utility or application to run on your 
+        current hardware. 
+
+            5. Use your current Forth system to make a 
+        stand-alone utility or application to run on 
+        different hardware. 
+
+                           Problems 
+
+     There are only two main problems that metacompilers 
+must solve: logical versus physical addresses and arranging 
+and searching the dictionary so the right word is found at 
+the right time. 
+
+                 Logical vs Physical Addresses 
+
+     Whereas the regular compiler merely extends the 
+dictionary, the metacompiler needs to lay down code 
+somewhere else, usually referred to as the target space or 
+target dictionary.  The address where this code is laid down 
+is  not  the address where it will sit, later, when it is 
+executed.  For example, if you are generating code that will 
+later be loaded at address zero, you might build it at 
+address $8000 (or wherever you enough free memory to hold 
+it). 
+    
+     When it is an  address  that you are laying down, you 
+have two things to consider: its physical address (where it 
+is now, at compile time) and its logical address (where you 
+plan for it to be, later, when it actually executes).  
+Suppose we wanted to compile the address of the following 
+16-bits into address $8000.  The physical address of the 
+that word is $8002.  But later executed what's at $8000 will 
+be at $0000 (and what's at $8002 will be at $0002), we must 
+store $0002 into address $8000.  Thus, the metacompiler 
+needs a method of converting between logical and physical 
+addresses. 
+
+                         Search Order 
+
+     When you want to compile a definition into the target 
+space, where do you look for the words, and what about 
+duplicates?  Should the word to be compiled or executed?  
+Suppose you want to define the following word: 
+
+            : DO-NOTHING (  n - n)  DUP SWAP DROP   ; 
+
+Let's take the words left to right.  You don't want to use 
+the host colon that compiles into the host dictionary.  
+Instead you want to find and execute the metacompiler 
+version.  Then, you want to find  DUP ,  SWAP , and  DROP , not in 
+the host dictionary, but in the target dictionary.  And, you 
+want to compile them rather than execute them.  For the 
+semi-colon, the metacompiler version from the host must be 
+found and executed.  
+
+     There are various tricks for looking in the right place 
+at the right time.  It can also be very simple.  Getting 
+this search order right is the heart of the metacompiler.  
+Now let's look at a simple way of solving these problems. 
+
+                 cmFORTH and Metacompilation 
+
+     Charles Moore invented a beautifully simple 
+metacompiler in his cmFORTH for the Novix.  I used this 
+general approach in Pygmy Forth for MS-DOS machines. 
+
+     The words  {  and  }  (left and right curly braces) switch 
+between the regular dictionary and the target space, e.g. 
+
+              {  : ABC   DUP SWAP DROP  ; 
+                 : CDE   ABC ABC        ; 
+                 : FGH   ABC CDE        ; 
+              } 
+     
+would compile those 3 words into the target space and then 
+return the dictionary pointer back to the regular 
+dictionary.
+     
+     Rather than having separate pointers for the two          
+spaces, and two versions of  HERE  (perhaps  HERE  and  THERE ), 
+the curly braces switch the value stored at  H  (the 
+dictionary pointer, called  DP  in some Forths.)  By handling 
+the change at this low level, the need for separate versions 
+of comma, C-comma, and  HERE , disappears. 
+
+     Relocation of addresses is handled by the words  dA  and 
+ ,A .   dA  ("delta-address") is a system variable that holds 
+the relocation factor.  It is used by  ,A  ("comma-address") 
+both in the regular Forth system (when  dA  has a value of 
+zero) and when metacompiling (when  dA  has a value of 
+$8000).
+
+     The above takes care of the simple problem of compiling 
+code at one address to run later at a different address.  
+The more difficult problem is search order: how do we find 
+the correct word to execute or compile? 
+
+     In some metacompilers this gets very complex with 
+complicated switching of vocabularies and testing for 
+whether we are in the target dictionary or not.  Fortunately 
+there is a simpler method. 
+     
+     Charles Moore solved the problem (and some others) in 
+cmFORTH with the novel and elegant method of having just two 
+vocabularies:  COMPILER  and  FORTH .  Words in  COMPILER  are 
+immediate.  All the other words are in  FORTH .  When 
+interpreting, words are looked for only in  FORTH .  When 
+compiling,  COMPILER  is searched first.  If the word is found 
+it is executed (it is an "immediate" word) else  FORTH  is 
+searched and the address is compiled.  New words are linked 
+into either  FORTH  or  COMPILER  depending on the value of 
+ CONTEXT .  Thus, there is no  IMMEDIATE  word.  Thus, you can 
+have two versions of a word with the same name, one in each 
+of the vocabularies.  One only works when compiling and the 
+other only when interpreting.  For example, you can have the 
+word  ."  in  COMPILER  that compiles a string for later 
+printing and the word  ."  in  FORTH  that prints the string 
+right now.  This eliminates the need for the abomination  .( , 
+which some Forths use to print a string while interpreting. 
+
+     The vocabulary heads immediately preceed the variable 
+ CONTEXT .  Thus, in Pygmy Forth,  CONTEXT 2 -  is the address 
+of the vocabulary head for  FORTH  and  CONTEXT 4 -  is the 
+address of the vocabulary head for  COMPILER .  Since the 
+Novix is a cell addressed machine, instead of a byte 
+addressed machine, the offsets in cmFORTH are 1 for  FORTH  
+and 2 for  COMPILER , rather than 2 and 4 as in Pygmy.
+
+     cmFORTH uses just those two vocabularies, both for 
+regular and metacompilation.  To make my life a little 
+easier with Pygmy, I added two more.  It has a  FORTH  and 
+ COMPILER  for the host dictionary and another set of  FORTH  
+and  COMPILER  for the target dictionary.  Thus, offsets from 
+ CONTEXT  of 2 and 4 point to the host  FORTH  and  COMPILER  
+voc-heads and 6 and 8 point to the target  FORTH  and  COMPILER  
+voc-heads.  This is not strictly necessary, but it makes it 
+simpler to follow what you are doing and to control exactly 
+where you are searching.  These extra two vocabularies are 
+used only when metacompiling.    
+     
+     Look at the code for  INTERPRET  in figure 13.  It only 
+searches host's  FORTH .  If the word is found it is executed.  
+No problem, and no confusion with words of the same name 
+that have been compiled into the target dictionary.  This 
+gives us access to our regular Forth system for saving 
+memory images to disk, for poking around in memory with 
+ DUMP , for editing, examining the stack, etc. 
+
+     The same search mechanisms such as  -FIND ,  ' , and  -'  
+that are used with the host dictionary work fine without any 
+changes with the target dictionary.
+
+     Look at the code for  ]  (the metacompiler's colon 
+compiler) in figure 14.  Here we explicitly control the 
+search.  Within a colon definition we first search the 
+host's  COMPILER .  This finds the words  IF ELSE THEN BEGIN  
+ WHILE REPEAT ABORT"  and such.  In other words, the immediate 
+words.  These words are the metacompiler versions that are 
+defined in the host's dictionary.  These words are  executed .  
+They affect the compilation, usually laying down special 
+run-time target code.  They are not confused with the host's 
+regular versions of these same words, even though they are 
+also in host's  COMPILER  because the metacompiler versions 
+were defined after the regular versions.  Any of the regular 
+versions of words in either host's  FORTH  or  COMPILER  that 
+might be needed later must be renamed.  See figure 7 for an 
+example of renaming  FORTH ,  COMPILER ,  / , and  :  so we can 
+access them later, after the metacompiler versions with the 
+same names are defined.  Note that with this system, only 
+those 4 need to be renamed. 
+
+     If the word is not found in host's  COMPILER , then we 
+look in target's  FORTH .  If found, its address is compiled 
+into the target dictionary.  Thus, there is no danger of 
+finding the host's version of that word by mistake.  If the 
+word is not found in either host's  COMPILER  or in target's 
+ FORTH  then an attempt is made to convert it to a number and 
+compile it as a literal.  If that fails, an error message is 
+displayed. 
+
+     Let's take a closer look at how the defining words such 
+as  IF ELSE LITERAL ABORT"  etc work.  They must be defined in 
+host's  COMPILER  so they will execute during the definition 
+of a target word to lay down a target runtime word that 
+hasn't been defined yet.  How do we handle this impasse?  
+     
+     There are two general approaches.  The first is to 
+sprinkle these defining words throughout the target code.  
+For example,  IF  must lay down the code for  0branch .  We 
+could switch to the target dictionary and define  0branch  and 
+then switch back to the host dictionary and define the 
+metacompiler version of  IF  that uses it.  This is a very 
+workable method, but I prefer to group all the metacompiler 
+definitions together in one place and then group all the 
+target definitions in another, rather than interleaving 
+them.  
+
+     The second approach, which is used in Pygmy, is to 
+define variables to hold the addresses of those runtime 
+words (figure 2).  Then we can go ahead and define  IF , for 
+example, to fetch the contents of the variable  T0BR  and lay 
+it down.  At the time we define  IF  the address of the 
+runtime routine  0branch  is not known.  Then, in the target 
+definitions, as soon as we define  0branch  we store its 
+address into  T0BRA .  Of course, either way we must not use 
+the word  IF  in a target definition until after  0branch  has 
+been defined!  Figures 5, 9, & 10 show how the defining 
+words use these variables.  Figure 12 shows the target 
+definitions for runtime the words  var ,  0branch , and  branch  
+and how their related metacompiler variables  TVAR ,  T0BR , & 
+ TBRA  get initialized. 
+
+     cmFORTH has it a little easier.  It doesn't call 
+runtime routines, such as  0branch  and  lit .  Instead these 
+are laid down as in-line machine code.  Thus, they  are  known 
+at the time  IF ,  LITERAL , etc are defined. 
+
+     As the target image is being compiled, the link fields 
+contain physical addresses so the host system can find 
+target words.  When finished, before saving the target image 
+to disk, these link addresses must be converted to the 
+correct logical addresses by applying the relocation factor 
+from  dA  to them.   SCAN ,  TRIM ,  CLIP , &  PRUNE  in figure 6 take 
+care of this relinking and a few other housekeeping details. 
+
+                           Using It 
+
+     Actually using the metacompiler in Pygmy Forth is very 
+easy.  Just type  1 LOAD  (figure 1) and a new kernel will be 
+generated automatically.  Screen 1 loads the metacompiler 
+and then loads the source code for the Pygmy kernel, then 
+relinks the target dictionary and save the image to disk as 
+a .COM file.  At this point you can return to DOS with  BYE  
+and run the new kernel.  All the code for the metacompiler, 
+the kernel, and the editor and assembler is in the one file 
+PYGMY.SCR. 
+
+     Pygmy Forth (for MS-DOS machines) is available on disk 
+from FIG or by downloading from GEnie or other bulletin 
+boards.  Look for version 1.3.  If you haven't tried 
+metacompiling, this is an easy way to experiment with it.  The 
+first step is to type  1 LOAD  without making any changes, to 
+get a feel for the process.  Then start making minor changes 
+to the kernel, such as the number of disk buffers or the 
+default colors.  As your confidence and experience with it 
+grows you can tackle more adventurous changes.
+
+     Well, we shined the light nearly everwhere and found no 
+monster to fear.  Let's put on the safety on the shotgun and 
+finish that bottle of Scotch. 
+
+
+
+                             END
+

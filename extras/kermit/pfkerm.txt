@@ -1,0 +1,438 @@
+file pfkerm.txt
+
+   This is a conversion of the Forth block file KERMIT.DOW
+   so as to be readable as a plain text file.  The complete
+   package, including the actual block files, is available
+   from my web site in Pygmy version 1.7 at
+
+         http://pygmy.utoh.org
+
+   This pfkerm.txt and KERMIT.DOW provide the "shadow"
+comments to match the source code in the file pfkerm.src
+and KERMIT.SCR.
+
+
+KERMIT.SCR
+  Contains a simple implementation of the Kermit
+  file transfer protocol.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+( load screen    Kermit file transfer protocol)
+
+For the algorithm, see pp 98-113 of
+
+_C Programmer's Guide to Serial Communications_
+by Joe Campbell, Howard W. Sams & Company, 1987,
+ISBN 0-672-22584-0.
+
+Note, there are some errors in Campbell's examples.
+
+
+
+
+
+
+
+
+( KERMIT)
+
+GET-Y/N   Wait for the user to press a y, n, Y, or N key.
+          Return true if y or Y.  Return false if n or N.
+
+
+TRY-AGAIN?
+          Display a message and ask whether the user wants
+          to try again.  E.g.
+          " Drive not ready" TRY-AGAIN? IF ... THEN
+
+.MSG      clears the top 2 lines of the screen and displays a
+          message, leaving the cursor positioned just past the
+          message.  E.g.  " Starting the transfer ..." .MSG
+
+
+
+( KERMIT)
+MYMAXL maximum "len" we are willing to handle.
+       The transmitted LEN field includes SEQ, TYPE, DATA, CKSUM
+       fields.  94 maximum allowed under basic Kermit.  Our
+       buffers must be 1 byte longer to hold the LEN field also.
+OUT-BUF & IN-BUF buffers for building outgoing or receiving
+       incoming frames.  We store LEN, SEQ, TYPE, DATA, CKSUM
+       fields, but not the SOH nor the ending CR.
+OUTLEN & INLEN count bytes currently in the buffers
+MAXL   holds agreed-upon maximum "len" value, which is
+       the MIN of receiver's and sender's preferences.
+
+a "character-ized" number is produced by adding a "space."  The
+result must be <= $7E, thus the original number must be
+<= $5E (ie 94 decimal).
+
+
+( KERMIT)
+
+MAXL, QCTL, etc are the agreed-upon protocol parameters for
+the session.  INIT-LIMITS initializes these to the values
+we would prefer to use.  The sender and receiver exchange
+an S-frame and an ACK-frame listing their preferences.  We
+then compromise by taking the MIN between them.
+
+
+
+
+
+
+
+
+
+
+( KERMIT)
+
+We make >LEN, >TYPE, etc relative to the start of the buffer
+so we can use the same definitions for both the receiving and
+sending buffers.  >CKSUM assumes the LEN byte has been
+initialized.
+
+
+
+
+
+
+
+
+
+
+
+( KERMIT  - compromise on the parameters)
+
+COMPROMISE assumes we have an S frame in one buffer and its
+ACK frame in the other buffer.  We don't care whether we are
+the sender or receiver.  The compromise takes the more
+conservative setting from each buffer as the actual protocol
+parameter to use.
+
+For now, we will ignore all the settings except for MAXL and
+TIMEOUT, taking the MIN of MAXL and the MAX of TIMEOUT.
+
+
+
+
+
+
+
+MYMENU    cheap error handling in the case where the user
+          chooses to abort the file transfer process.  Set up
+          your own menu ( ' MYREALMENU IS MYMENU ) or allow the
+          default 'no vector' error to occur.
+
+KSER-IN   gets a serial character and tests whether it is SOH,
+          all the while checking for a time-out.  Returns
+          character and SOH-flag (true if character is SOH).
+          In case of time out, return up an extra level,
+          putting a 'V on the stack as the dummy frame type
+          indicating a time out followed by a true flag
+          indicating a 'good' check sum.
+          Note, KSER-IN is only called by GETFRAME and so is
+          always called with the correct stack depth.  To test
+          it standalone, nest it once in a test word, as shown
+          in TEST-IN.
+
+( KERMIT)
+We "controlify" a control code (0-$1F, $7F) by flipping bit 6
+and preceding it with the QCTL character (usually '#).  The
+QCTL character itself is escaped.  We count QCTL as a control
+character in CTRL? so we can escape it, but we only flip bit
+6 for actual control characters.  Also, consider $7E (~) to
+be a control character, as it is used for repeat counts
+
+(KEMIT puts a character into OUT-BUF and increments the count
+KEMIT writes a character into OUT-BUF, escaping it if necessary.
+ROOM? says whether there is room in the buffer for another
+      character.  We require 2 bytes available in case the
+      next character needs to be escaped.  If we allowed
+      high-bit escpaping we would require 3 bytes instead.
+
+
+
+( KERMIT)
+CK%%  converts the raw checksum of all the bytes
+      after SOH into a checksum character by wrapping
+      and characterifying it according to the KERMIT algorithm.
+
+CKSUM  calculates a checksum on a buffer by adding the bytes
+       in the LEN SEQ TYPE & DATA fields and applying CK%%.
+       The LEN field must include the cksum byte.
+
+CKSUM? Calculate the checksum character for the input frame
+       and compare it to the transmitted checksum character.
+       Return true if the checksum is good.
+
+
+
+
+
+
+MODEM! sends a character to the modem.  We defer it to make
+      testing easy.
+
+DATA! builds an entire data field, stopping either when out
+      of source characters or out of room in OUT-BUF.
+
+BUILD-FRAME  Given the address and length of data to be
+      transferred and the type of the frame, put as much of
+      the data as will fit into a frame and return the address
+      and length of the remaining (i.e. unsent) data.
+
+
+
+
+
+
+( KERMIT - debugging aids)
+
+.FRAME .INB .OUTB  are used for testing to dump the contents
+                   of the buffers to the screen.
+
+TEST1 TEST2  provide some test data
+
+
+
+
+
+
+
+
+
+
+
+( KERMIT)
+
+SENDFRAME sends an entire header, from SOH through 1-byte
+      checksum and ending carriage return, to the "modem."
+      It sends SOH, sends LEN+1 characters in the OUT-BUF,
+      and then sends a carriage return.
+
+
+
+
+
+
+
+
+
+
+
+( KERMIT)
+
+LIMITS provides data for use in building either an S-frame
+       or its ACK frame for purposes of negotiating
+       the protocol as to maximum frame length, etc.
+       Note that PADC is controlified, but seems not to
+       be "escaped" -- after all, we haven't agreed upon
+       the escape character at the time of sending the
+       S-frame.  We build this frame directly into OUT-BUF
+       to prevent DATA! from escaping any characters.
+       We say we'll use (~) as the repeat character, but we
+       will _not_ use repeat counts when we transmit, but we
+       _will_ handle them when we receive.  If the sender does
+       not escape actual tildes, then we will have a problem.
+
+
+
+( KERMIT)
+KINIT sends the 'send-init' frame.  It must have sequence zero.
+      This is the 'S' frame sent by sender in response to the
+      receiver's initial NAKs.
+KINITACK sends a reply to a 'send-init' frame.  Before sending
+      KINITACK (if we are receiving) or after receiving
+      KINITACK (if we are sending), we must adjust our settings
+      to the minimum of the sender's and the receiver's requests
+      Note complex handling of COMPROMISE.
+FILEHEADER sends the file name of the file to be transmitted.
+
+EOF is sent at the end of each file we send.  EOT is sent after
+we finish sending all the files.  Reciever sends ACK or NAK
+after each frame is received, depending on whether chksum is
+ok.  ERROR is sent to abandon the session.  I think we will
+ignore an ATTRIB frame.
+
+( KERMIT)
+
+EXPECTED   holds the count of bytes we expect to receive
+           following the length byte.
+
+
+SETLENGTH  handles the length count for an incoming frame,
+           initializing EXPECTED and INLEN and putting the
+           length byte into the input buffer.
+
+PUT-IN-BUFFER  puts input bytes into the buffer and returns
+               a flag that is true when all the expected bytes
+               have arrived.
+
+
+
+
+
+GETFRAME is closely tied to KSER-IN and is the only word that
+ should ever call KSER-IN, as KSER-IN returns upward an extra
+ level in case of a timeout, supplying the type and cksum flag
+ (ie 'V -1).  So, GETFRAME always succeeds, returning a type
+ and flag.  It watches for an SOH in the middle of a frame and
+ starts over.  What makes GETFRAME tricky is it needs to handle
+ the usual case as well as a timeout at any time as well as an
+ unexpected SOH at any time.  What makes it simpler is pushing
+ some of the logic down to the word KSER-IN and letting KSER-IN
+ terminate not only itself but also GETFRAME in the case of a
+ timeout, thus producing a dummy V-frame.  After that we no
+ longer have a timeout as a special case, we simply have an
+ additional "frame" type (i.e. a timeout frame).
+
+
+
+( KERMIT)
+
+GET-GOOD-FRAME  continues to try to get a frame until one
+                arrives with a good checksum.  It will try
+                forever unless the user aborts the transfer.
+                (See KSER-IN for test for user abort.)
+
+
+IN-SEQ     sequence number of the frame in the input buffer
+
+GOOD-SEQ?  true if the input frame's sequence number is the
+           expected sequence number.
+
+
+
+
+
+( KERMIT)
+
+(GETACK keeps getting frames until one comes in with a good
+        checksum.  V-frames are ok.
+
+GETACK keeps getting ack frames, handling or ignoring each, as
+       appropriate.  It re-sends the data frame in case of a
+       V-frame (timeout) or a NAK with the correct sequence
+       number.  It is used only by the sender.  Later, it
+       could bail out if too many NAKs or timeouts occur in a
+       row, etc.
+
+READ  load up the buffer from the file in preparation for
+      transmitting it via the serial port
+
+
+
+( KERMIT)
+
+GET-FIRST-NAK ignores timeouts and sequence numbers and waits
+      for a NAK from the receiver.
+
+SEND  wait for the prompting NAK frame from receiver
+      send S-frame ( ie KINIT)
+      reset serial in to throw away any extra prompting NAKs
+      get S-frame ACK for SEQ 0
+      send the entire file, one D-frame at a time
+      close the file
+      send end of file and end of transmission
+
+
+
+
+
+( KERMIT)
+
+IN-DATA  is a buffer for holding the UNCTRL'd data field.  Make
+         it big in case lots of repeat counts are present.
+
+C!+ stores a character and bumps the address (similar to C@+)
+
+C@+-  gets a character from the 'from' address, increments
+      the 'from' address and decrements the count of remaining
+      characters.
+
+UNCTRL'd if the current character is the QCTL escape character,
+         get another character and unescape it.
+
+
+
+
+
+REPEAT'd The most recent character was the tilde (~), indicating
+         the beginning of a 3 or 4 character repeat sequence.
+         Get the next character as the count and then the next 1
+         or 2 (if escaped) to find the value to be repeated, &
+         expand that repeated character into destination buffer.
+
+UNCTRL copy the escaped and repeated source buffer,
+       unescaping and expanding as appropriate, to the
+       destination buffer.
+
+>IN-DATA  copies IN-BUF's data field, which may contain
+          escaped characters, to IN-DATA with escaped characters
+          converted to their actual values (and repeated counts
+          expanded).
+
+
+( KERMIT)
+
+BUILDFNAME extracts name of file to be received from an
+           input F frame and stores it in our KFNAME buffer
+           as a counted string (and an asciiz string suitable
+           for passing to DOS for creating the file).
+
+RCVNAME  this is what we do in response to an F-frame:
+         save the file name in the KFNAME buffer as
+         a counted, asciiz string, then create the file and
+         save the handle.
+
+
+
+
+
+
+( KERMIT)
+
+GET-NEXT  Get the next frame we are expecting, ACKing or NAKing
+          as appropriate.
+          Always ack with the seq number we received, even if
+          it wasn't the seq number we expected, thus allowing
+          sender to continue.  But, throw away frames that
+          do not have the expected seq number.  Except, if
+          V-frame (ie timeout) or if a bad checksum, then
+          NAK with our expected sequence number.
+          It is possible a D-frame should not be ACK'd until
+          after we have written it to disk, in case disk writes
+          interfere with servicing the serial port.
+
+WRITE     Append input data to the file.
+
+
+( KERMIT)
+
+RECEIVE  send NAK every second until we see SOH, then get
+         the rest of that first frame -- until we get the
+         S-frame.  Then compromise on settings and send
+         an ack for the S-frame.  Then, handle the frame
+         types, getting file name and opening it for an
+         F-frame, writing D-frames to the file, closing
+         the file upon getting a Z-frame, and exiting upon
+         getting a B-frame (EOT).
+
+
+
+
+
+

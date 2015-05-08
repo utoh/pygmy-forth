@@ -1,0 +1,488 @@
+                                                                    file KERMIT.SCR
+
+ scr # 13000                                                        scr # 12000
+KERMIT.SCR                                                          KERMIT.SCR
+  Contains a simple implementation of the Kermit                      Contains a simple implementation of the Kermit
+  file transfer protocol.                                             file transfer protocol.
+
+  copyright 1997 Frank Sergeant   frank@pygmy.utoh.org
+  License:   license20040130.txt or
+             http://pygmy.utoh.org/license.html
+
+
+
+
+
+
+
+
+
+
+ scr # 13001                                                        scr # 12001
+( load screen    Kermit file transfer protocol)                     ( load screen    Kermit file transfer protocol)
+
+For the algorithm, see pp 98-113 of                                 
+                                                                    
+_C Programmer's Guide to Serial Communications_
+by Joe Campbell, Howard W. Sams & Company, 1987,
+ISBN 0-672-22584-0.                                                 12002 12024 THRU
+
+Note, there are some errors in Campbell's examples.
+
+
+
+
+
+
+
+
+
+ scr # 13002                                                        scr # 12002
+( KERMIT)                                                           ( KERMIT - user interface)
+
+GET-Y/N   Wait for the user to press a y, n, Y, or N key.           : GET-Y/N ( - f)
+          Return true if y or Y.  Return false if n or N.             BEGIN KEY DUP 'Y = OVER 'y = OR IF DROP -1 EXIT THEN
+                                                                                DUP 'N = SWAP 'n = OR IF       0 EXIT THEN  BEEP
+                                                                      AGAIN  ;
+TRY-AGAIN?
+          Display a message and ask whether the user wants          : TRY-AGAIN? ( a - f)
+          to try again.  E.g.                                         CR COUNT TYPE CR ." Try again? (Y/N) "
+          " Drive not ready" TRY-AGAIN? IF ... THEN                   GET-Y/N  ( f)  ;
+
+.MSG      clears the top 2 lines of the screen and displays a       : .MSG ( a -) 0 0 AT 160 SPACES  0 0 AT COUNT TYPE  ;
+          message, leaving the cursor positioned just past the
+          message.  E.g.  " Starting the transfer ..." .MSG
+
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13003                                                        scr # 12003
+( KERMIT)                                                           ( KERMIT)
+MYMAXL maximum "len" we are willing to handle.                      1 CONSTANT SOH
+       The transmitted LEN field includes SEQ, TYPE, DATA, CKSUM    VARIABLE SEQ    SEQ OFF
+       fields.  94 maximum allowed under basic Kermit.  Our         : BUMPSEQ ( -) SEQ @ 1+ 63 AND SEQ !  ;
+       buffers must be 1 byte longer to hold the LEN field also.      94  ( 35) CONSTANT MYMAXL ( fields SEQ TYPE DATA & CKSUM)
+OUT-BUF & IN-BUF buffers for building outgoing or receiving
+       incoming frames.  We store LEN, SEQ, TYPE, DATA, CKSUM       CREATE OUT-BUF  MYMAXL ( 1+) 2 + ALLOT     VARIABLE OUTLEN
+       fields, but not the SOH nor the ending CR.                   CREATE  IN-BUF  MYMAXL ( 1+) 2 + ALLOT     VARIABLE INLEN
+OUTLEN & INLEN count bytes currently in the buffers
+MAXL   holds agreed-upon maximum "len" value, which is              : ?NUM-OK ( n -) $5E > ABORT" too big"  ;
+       the MIN of receiver's and sender's preferences.              : CHAR ( n - c) DUP ?NUM-OK ( n) $20 +  ;
+                                                                    : UNCHAR ( c - n) $20 - ( n) DUP ?NUM-OK  ;
+a "character-ized" number is produced by adding a "space."  The
+result must be <= $7E, thus the original number must be
+<= $5E (ie 94 decimal).
+
+
+
+ scr # 13004                                                        scr # 12004
+( KERMIT)                                                           ( KERMIT  - protocol parameters)
+                                                                    VARIABLE MAXL
+MAXL, QCTL, etc are the agreed-upon protocol parameters for         VARIABLE QCTL
+the session.  INIT-LIMITS initializes these to the values           VARIABLE NPAD
+we would prefer to use.  The sender and receiver exchange           VARIABLE PADC
+an S-frame and an ACK-frame listing their preferences.  We          VARIABLE EOLC
+then compromise by taking the MIN between them.                     VARIABLE TIMEOUT
+
+                                                                    : INIT-LIMITS ( -)
+                                                                      MYMAXL MAXL !  ( maximum "len" value)
+                                                                          '# QCTL !  ( control code escape character)
+                                                                           0 NPAD !  ( number of pad characters)
+                                                                           0 PADC !  ( pad character)
+                                                                         $0D EOLC !  ( end of line character)
+                                                                        4 TIMEOUT !  ( timeout in seconds)     ;   INIT-LIMITS
+
+
+
+ scr # 13005                                                        scr # 12005
+( KERMIT)                                                           ( KERMIT  - address of fields in buffers)
+                                                                    : FIELD: ( offset -) ( buff - a) CREATE C,   DOES> C@ +  ;
+We make >LEN, >TYPE, etc relative to the start of the buffer
+so we can use the same definitions for both the receiving and       0 FIELD: >LEN
+sending buffers.  >CKSUM assumes the LEN byte has been              1 FIELD: >SEQ
+initialized.                                                        2 FIELD: >TYPE
+                                                                    3 FIELD: >DATA
+                                                                    : >CKSUM ( buff - a) >LEN DUP C@ UNCHAR  +  ;
+
+                                                                    3 FIELD: >MAXL
+                                                                    4 FIELD: >TIME
+                                                                    5 FIELD: >NPAD
+                                                                    6 FIELD: >PADC
+                                                                    7 FIELD: >EOLC
+                                                                    8 FIELD: >QCTL
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13006                                                        scr # 12006
+( KERMIT  - compromise on the parameters)                           ( KERMIT - compromise on the parameters)
+
+COMPROMISE assumes we have an S frame in one buffer and its         : COMPROMISE ( -)
+ACK frame in the other buffer.  We don't care whether we are          OUT-BUF IN-BUF ( a a)
+the sender or receiver.  The compromise takes the more                OVER >MAXL C@ UNCHAR  OVER >MAXL C@ UNCHAR
+conservative setting from each buffer as the actual protocol              MIN  MAXL ! ( a a)
+parameter to use.                                                     OVER >TIME C@ UNCHAR  OVER >TIME C@ UNCHAR
+                                                                          MAX  TIMEOUT ! ( a a)    2DROP  ;
+For now, we will ignore all the settings except for MAXL and
+TIMEOUT, taking the MIN of MAXL and the MAX of TIMEOUT.
+
+
+
+
+
+
+
+
+ scr # 13007                                                        scr # 12007
+MYMENU    cheap error handling in the case where the user           DEFER MYMENU
+          chooses to abort the file transfer process.  Set up       : KSER-IN ( - c f)
+          your own menu ( ' MYREALMENU IS MYMENU ) or allow the       TIMEOUT @ 1000 * ( ms)
+          default 'no vector' error to occur.                         BEGIN  KEY? IF KEY DROP CR
+                                                                                        ." Abort file transfer (Y/N)? "  GET-Y/N CR
+KSER-IN   gets a serial character and tests whether it is SOH,                          IF ." Transfer aborted -- press "
+          all the while checking for a time-out.  Returns                                  ." any key to return to menu"
+          character and SOH-flag (true if character is SOH).                               KEY DROP MYMENU
+          In case of time out, return up an extra level,                                ELSE ." Transfer continuing "
+          putting a 'V on the stack as the dummy frame type                       THEN  THEN
+          indicating a time out followed by a true flag                 SER-IN? IF ( ms) DROP SER-IN DUP SOH = ( c f) EXIT THEN
+          indicating a 'good' check sum.                                ( ms) 1-  DUP 0= IF POP 2DROP 'V  -1 EXIT THEN     1 MS
+          Note, KSER-IN is only called by GETFRAME and so is          AGAIN  ;
+          always called with the correct stack depth.  To test
+          it standalone, nest it once in a test word, as shown      : TEST-IN ( - c f)  KSER-IN  ;
+          in TEST-IN.
+
+
+ scr # 13008                                                        scr # 12008
+( KERMIT)                                                           ( KERMIT )
+We "controlify" a control code (0-$1F, $7F) by flipping bit 6       : CTRL ( c - c')
+and preceding it with the QCTL character (usually '#).  The           DUP QCTL @ = OVER '~ = OR IF EXIT THEN  $40 XOR  ;
+QCTL character itself is escaped.  We count QCTL as a control
+character in CTRL? so we can escape it, but we only flip bit        : CTRL? ( c - f)
+6 for actual control characters.  Also, consider $7E (~) to           DUP $20 < OVER QCTL @ = OR OVER $7E = OR SWAP $7F = OR  ;
+be a control character, as it is used for repeat counts
+                                                                    : (KEMIT ( c -) OUT-BUF  OUTLEN @ + C! (  ) 1 OUTLEN +!  ;
+(KEMIT puts a character into OUT-BUF and increments the count
+KEMIT writes a character into OUT-BUF, escaping it if necessary.    : KEMIT  ( c -)  PAUSE ( just in case)
+ROOM? says whether there is room in the buffer for another            ( c) DUP CTRL? IF  QCTL @ (KEMIT  CTRL  ( c) THEN (KEMIT  ;
+      character.  We require 2 bytes available in case the
+      next character needs to be escaped.  If we allowed            : ROOM? ( - u) MAXL @ 1- OUTLEN @  >  ;
+      high-bit escpaping we would require 3 bytes instead.
+
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13009                                                        scr # 12009
+( KERMIT)                                                           ( KERMIT )
+CK%%  converts the raw checksum of all the bytes                    : CK%% ( u - c)
+      after SOH into a checksum character by wrapping                 DUP $C0 AND 2/ 2/ 2/ 2/ 2/ 2/ + $3F AND CHAR ;
+      and character-izing it according to the KERMIT algorithm.
+                                                                    : CKSUM ( buffer - c) >LEN DUP C@ UNCHAR ( a #) 0 ROT ROT
+CKSUM  calculates a checksum on a buffer by adding the bytes          FOR ( sum a) C@+ +UNDER NEXT DROP  CK%% ( c)  ;
+       in the LEN SEQ TYPE & DATA fields and applying CK%%.
+       The LEN field must include the cksum byte.                   : CKSUM? ( - f)
+                                                                      IN-BUF CKSUM ( c)  IN-BUF >CKSUM C@ ( c c)  =  ;
+CKSUM? Calculate the checksum character for the input frame
+       and compare it to the transmitted checksum character.
+       Return true if the checksum is good.
+
+
+
+
+
+
+ scr # 13010                                                        scr # 12010
+
+MODEM! sends a character to the modem.  We defer it to make         DEFER MODEM!
+      testing easy.                                                 ( ' EMIT)  ' SER-OUT IS MODEM!
+
+DATA! builds an entire data field, stopping either when out         : DATA! ( a # - a' #')    SWAP  ( # a)
+      of source characters or out of room in OUT-BUF.                 BEGIN ( # a) OVER 0= ROOM? 0= OR ( ie out of source or room)
+                                                                       NOT WHILE ( # a) C@+ KEMIT  -1 +UNDER  REPEAT SWAP ( a #) ;
+BUILD-FRAME  Given the address and length of data to be
+      transferred and the type of the frame, put as much of         : BUILD-FRAME ( a # type - a' #')   OUTLEN OFF
+      the data as will fit into a frame and return the address        0 ( ie dummy len) CHAR (KEMIT    SEQ @ CHAR (KEMIT
+      and length of the remaining (i.e. unsent) data.                 (KEMIT ( a #) DATA! ( a' #')
+                                                                      OUTLEN @ CHAR  OUT-BUF >LEN C!  ( a #)
+                                                                      OUT-BUF CKSUM  OUT-BUF >CKSUM C! ( a #)  ;
+
+
+
+
+
+ scr # 13011                                                        scr # 12011
+( KERMIT - debugging aids)                                          ( KERMIT - debugging aids)
+
+.FRAME .INB .OUTB  are used for testing to dump the contents        : .FRAME ( buf -) ." len = "  C@+ UNCHAR DUP PUSH 2 U.R
+                   of the buffers to the screen.                      ."  seq = " C@+ UNCHAR 2 U.R SPACE SPACE
+                                                                      ." myseq = " SEQ @ 2 U.R SPACE SPACE
+TEST1 TEST2  provide some test data                                   POP 1- TYPE  CR  ;
+
+                                                                    : .INB ( type -) .S 3 SPACES
+                                                                       'V = IF ." V-frame "  CR ELSE ."  IN: " IN-BUF .FRAME THEN ;
+
+                                                                    : .OUTB ( -) .S 3 SPACES ." OUT: " OUT-BUF .FRAME  ;
+
+                                                                    " WHAT DOES THE SYMBOL # STAND FOR?" CONSTANT TEST1
+
+                                                                    " as much labor for the study of its" CONSTANT TEST2
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13012                                                        scr # 12012
+( KERMIT)                                                           ( KERMIT)
+
+SENDFRAME sends an entire header, from SOH through 1-byte           : SENDFRAME ( -) SOH MODEM!  OUT-BUF >LEN DUP C@ UNCHAR 1+
+      checksum and ending carriage return, to the "modem."           FOR ( a) C@+ MODEM!  NEXT DROP (  )  $0D MODEM!  ;
+      It sends SOH, sends LEN+1 characters in the OUT-BUF,
+      and then sends a carriage return.
+
+
+
+
+
+
+
+
+
+
+
+
+ scr # 13013                                                        scr # 12013
+( KERMIT)                                                           ( KERMIT)
+                                                                    : LIMITS ( type -)
+LIMITS provides data for use in building either an S-frame            SEQ OFF  PUSH
+       or its ACK frame for purposes of negotiating                   '~  ( the repeat char)
+       the protocol as to maximum frame length, etc.                  '1  ( 1-byte chksum, either '1 or 1 CHAR seems to work)
+       Note that PADC is controlified, but seems not to               'N  ( no hi-bit prefix)
+       be "escaped" -- after all, we haven't agreed upon              QCTL @          EOLC @ CHAR  PADC @ CTRL
+       the escape character at the time of sending the                NPAD @ CHAR  TIMEOUT @ CHAR  MAXL @ CHAR    POP
+       S-frame.  We build this frame directly into OUT-BUF            SEQ @ CHAR   12 ( len) CHAR
+       to prevent DATA! from escaping any characters.                 OUT-BUF  12 FOR DUP PUSH C!  POP 1+ NEXT DROP  (  )
+       We say we'll use (~) as the repeat character, but we           OUT-BUF CKSUM  OUT-BUF >CKSUM C!  ;
+       will _not_ use repeat counts when we transmit, but we
+       _will_ handle them when we receive.  If the sender does
+       not escape actual tildes, then we will have a problem.
+
+
+
+
+ scr # 13014                                                        scr # 12014
+( KERMIT)                                                           ( KERMIT)
+KINIT sends the 'send-init' frame.  It must have sequence zero.     : BUILD/SEND  ( a # type -) BUILD-FRAME  SENDFRAME 2DROP  ;
+      This is the 'S' frame sent by sender in response to the       : KINIT ( -) 'S LIMITS  SENDFRAME  ;
+      receiver's initial NAKs.                                      : KINITACK ( -) 'Y LIMITS COMPROMISE 'Y LIMITS SENDFRAME  ;
+KINITACK sends a reply to a 'send-init' frame.  Before sending      : FILEHEADER ( a # -) " sending file " .MSG 2DUP TYPE
+      KINITACK (if we are receiving) or after receiving               ( a #)   'F BUILD/SEND  ;
+      KINITACK (if we are sending), we must adjust our settings     : EMPTY-FRAME ( type -) (  ) CREATE C,
+      to the minimum of the sender's and the receiver's requests      DOES> C@ 0 0 ROT BUILD/SEND  ;
+      Note complex handling of COMPROMISE.
+FILEHEADER sends the file name of the file to be transmitted.       'Y EMPTY-FRAME (ACK     'N EMPTY-FRAME (NAK
+                                                                    'Z EMPTY-FRAME EOF      'B EMPTY-FRAME EOT
+EOF is sent at the end of each file we send.  EOT is sent after     'A EMPTY-FRAME ATTRIB   'E EMPTY-FRAME ERROR
+we finish sending all the files.  Reciever sends ACK or NAK
+after each frame is received, depending on whether chksum is        : ACK ( seq# -) SEQ @ SWAP SEQ ! (ACK  SEQ !  ;
+ok.  ERROR is sent to abandon the session.  I think we will         : NAK ( seq# -) SEQ @ SWAP SEQ ! (NAK  SEQ !  ;
+ignore an ATTRIB frame.
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13015                                                        scr # 12015
+( KERMIT)                                                           ( KERMIT)
+
+EXPECTED   holds the count of bytes we expect to receive            VARIABLE EXPECTED
+           following the length byte.
+                                                                    : INBUF! ( c -)  IN-BUF INLEN @ + C!  1 INLEN +!  ;
+
+SETLENGTH  handles the length count for an incoming frame,          : SETLENGTH ( clength -)
+           initializing EXPECTED and INLEN and putting the            INLEN OFF  DUP INBUF!  ( c)   UNCHAR  EXPECTED !  ;
+           length byte into the input buffer.
+                                                                    : PUT-IN-BUFFER ( c - f)  INBUF! INLEN @ EXPECTED @ > ;
+PUT-IN-BUFFER  puts input bytes into the buffer and returns
+               a flag that is true when all the expected bytes
+               have arrived.
+
+
+
+
+
+ scr # 13016                                                        scr # 12016
+                                                                    ( KERMIT)
+GETFRAME is closely tied to KSER-IN and is the only word that
+ should ever call KSER-IN, as KSER-IN returns upward an extra       : GETFRAME ( -  type f)
+ level in case of a timeout, supplying the type and cksum flag        BEGIN KSER-IN NIP UNTIL (  )  ( ie await SOH)
+ (ie 'V -1).  So, GETFRAME always succeeds, returning a type          BEGIN
+ and flag.  It watches for an SOH in the middle of a frame and           BEGIN KSER-IN WHILE DROP REPEAT ( c) SETLENGTH (  )
+ starts over.  What makes GETFRAME tricky is it needs to handle          BEGIN KSER-IN NOT WHILE ( c) PUT-IN-BUFFER ( f)
+ the usual case as well as a timeout at any time as well as an            IF  IN-BUF >TYPE C@ CKSUM?
+ unexpected SOH at any time.  What makes it simpler is pushing                OVER 'E = OVER AND ABORT" Fatal Error in Kermit"
+ some of the logic down to the word KSER-IN and letting KSER-IN               EXIT THEN (  )
+ terminate not only itself but also GETFRAME in the case of a            REPEAT ( c) DROP
+ timeout, thus producing a dummy V-frame.  After that we no           AGAIN  ( type f)  ;
+ longer have a timeout as a special case, we simply have an
+ additional "frame" type (i.e. a timeout frame).
+
+
+
+
+ scr # 13017                                                        scr # 12017
+( KERMIT)                                                           ( KERMIT)
+
+GET-GOOD-FRAME  continues to try to get a frame until one           : GET-GOOD-FRAME ( - type)
+                arrives with a good checksum.  It will try            BEGIN  GETFRAME ( type cksumflag) NOT WHILE
+                forever unless the user aborts the transfer.               ."  bad cksum " DROP  REPEAT  ;
+                (See KSER-IN for test for user abort.)
+
+                                                                    : IN-SEQ ( - u)  IN-BUF >SEQ C@ UNCHAR  ;
+IN-SEQ     sequence number of the frame in the input buffer
+                                                                    : GOOD-SEQ? ( - f)  IN-SEQ SEQ @ =  ;
+GOOD-SEQ?  true if the input frame's sequence number is the
+           expected sequence number.
+
+
+
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13018                                                        scr # 12018
+( KERMIT)                                                           ( KERMIT)
+                                                                    : (GETACK ( - type)
+(GETACK keeps getting frames until one comes in with a good           BEGIN GETFRAME ( type f) NOT WHILE DROP REPEAT ( type)  ;
+        checksum.  V-frames are ok.
+                                                                    : GETACK ( -)
+GETACK keeps getting ack frames, handling or ignoring each, as        BEGIN   (GETACK  ( type)
+       appropriate.  It re-sends the data frame in case of a            'Y OF  GOOD-SEQ? ( f) DUP IF BUMPSEQ THEN    ( f)  ELSE
+       V-frame (timeout) or a NAK with the correct sequence             'N OF  GOOD-SEQ? IF SENDFRAME THEN              0  ELSE
+       number.  It is used only by the sender.  Later, it               'V OF  SENDFRAME                                0  ELSE
+       could bail out if too many NAKs or timeouts occur in a           ( default) DROP  0 [ 3 ] THENS ( f)
+       row, etc.                                                      UNTIL  ;
+
+READ  load up the buffer from the file in preparation for           : READ ( h - a #) PUSH 32767 BUFFER ( ie dummy buffer)
+      transmitting it via the serial port                             DUP 1024 POP FILE-READ #BYTES-READ @  ;
+
+
+
+
+ scr # 13019                                                        scr # 12019
+( KERMIT)                                                           ( KERMIT)
+
+GET-FIRST-NAK ignores timeouts and sequence numbers and waits       : GET-FIRST-NAK ( -) BEGIN (GETACK 'N = UNTIL  ;
+      for a NAK from the receiver.
+                                                                    : SEND ( name -) CLS " Waiting to send " .MSG INIT-LIMITS
+SEND  wait for the prompting NAK frame from receiver                  DUP FOPEN IF CR ." cannot open input file" CR  EXIT THEN
+      send S-frame ( ie KINIT)                                        ( name h) 1000 MS  ( name h)   GET-FIRST-NAK
+      reset serial in to throw away any extra prompting NAKs          ( n h)  KINIT RESET-SER-IN  GETACK
+      get S-frame ACK for SEQ 0                                       COMPROMISE  SWAP COUNT ( h a #) FILEHEADER ( h) GETACK
+      send the entire file, one D-frame at a time                     BEGIN ( h) DUP READ DUP WHILE ( h a #)
+      close the file                                                   BEGIN 'D BUILD-FRAME SENDFRAME GETACK  '. EMIT
+      send end of file and end of transmission                         DUP 0= UNTIL 2DROP
+                                                                      REPEAT 2DROP ( h) FCLOSE (   ) EMPTY-BUFFERS ( just in case)
+                                                                      EOF GETACK  EOT GETACK  ;
+
+
+
+
+ scr # 13020                                                        scr # 12020
+( KERMIT)                                                           ( KERMIT)
+
+IN-DATA  is a buffer for holding the UNCTRL'd data field.  Make     CREATE IN-DATA    MYMAXL 3 / 94 * 2 +  ALLOT
+         it big in case lots of repeat counts are present.
+                                                                    : C!+ ( c a - a+) DUP PUSH C! POP 1+  ;
+C!+ stores a character and bumps the address (similar to C@+)
+                                                                    : C@+- ( fr # - fr # c) 1- PUSH C@+ POP SWAP  ;
+C@+-  gets a character from the 'from' address, increments
+      the 'from' address and decrements the count of remaining      : UNCTRL'd ( from # c - from # c)
+      characters.                                                     DUP QCTL @ - IF EXIT THEN    DROP C@+- CTRL   ;
+
+UNCTRL'd if the current character is the QCTL escape character,
+         get another character and unescape it.
+
+
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13021                                                        scr # 12021
+                                                                    ( KERMIT)
+REPEAT'd The most recent character was the tilde (~), indicating    : REPEAT'd ( to from # - to from #)  ROT PUSH ( fr #)
+         the beginning of a 3 or 4 character repeat sequence.         C@+- UNCHAR PUSH C@+- ( fr # c) UNCTRL'd ( fr # c)
+         Get the next character as the count and then the next 1      POP POP ( ie rpt# to) 2DUP + PUSH ( fr # c rpt# to)
+         or 2 (if escaped) to find the value to be repeated, &        SWAP ROT FILL ( fr #) POP ROT ROT ( to fr #)  ;
+         expand that repeated character into destination buffer.
+                                                                    : UNCTRL ( from to # - a #)
+UNCTRL copy the escaped and repeated source buffer,                   ROT PUSH PUSH DUP POP POP SWAP ( to to from #)
+       unescaping and expanding as appropriate, to the                BEGIN DUP WHILE ( to to fr #)
+       destination buffer.                                                C@+- DUP '~ = IF ( to to fr # c) DROP REPEAT'd
+                                                                          ELSE UNCTRL'd PUSH ROT POP SWAP C!+ ROT ROT  THEN
+>IN-DATA  copies IN-BUF's data field, which may contain               REPEAT ( to to fr 0) 2DROP  OVER -  ( a #)  ;
+          escaped characters, to IN-DATA with escaped characters
+          converted to their actual values (and repeated counts     : >IN-DATA ( - a #) IN-BUF >DATA IN-DATA ( from to)
+          expanded).                                                  IN-BUF C@ UNCHAR 3 - ( from to #) UNCTRL ;
+
+
+
+ scr # 13022                                                        scr # 12022
+( KERMIT)                                                           ( KERMIT)
+                                                                    VARIABLE KHANDLE
+BUILDFNAME extracts name of file to be received from an             CREATE KFNAME 50 ALLOT
+           input F frame and stores it in our KFNAME buffer
+           as a counted string (and an asciiz string suitable       : BUILDFNAME ( -)
+           for passing to DOS for creating the file).                 >IN-DATA ( a #) DUP PUSH KFNAME 1+ SWAP CMOVE (  )
+                                                                      0 KFNAME R@ + 1+ C!  ( make name into an asciiz string)
+RCVNAME  this is what we do in response to an F-frame:                POP KFNAME C!   ;
+         save the file name in the KFNAME buffer as
+         a counted, asciiz string, then create the file and         : RCVNAME ( -)
+         save the handle.                                             BUILDFNAME   KFNAME FMAKE ( h f)
+                                                                      ABORT" cannot open output file" ( h) KHANDLE !
+                                                                      " receiving file " .MSG KFNAME COUNT TYPE SPACE  ;
+
+
+
+
+
+ scr # 13023                                                        scr # 12023
+( KERMIT)                                                           ( KERMIT)
+                                                                    : GETNEXT ( - type)
+GET-NEXT  Get the next frame we are expecting, ACKing or NAKing       BEGIN GETFRAME ( type f)
+          as appropriate.                                                IF ( type) DUP 'V =
+          Always ack with the seq number we received, even if               IF ( type) SEQ @ NAK    -1  ( type f)
+          it wasn't the seq number we expected, thus allowing               ELSE ( type) IN-SEQ DUP ACK ( type seq) SEQ @ -
+          sender to continue.  But, throw away frames that                  THEN
+          do not have the expected seq number.  Except, if               ELSE
+          V-frame (ie timeout) or if a bad checksum, then                   ( ie bad cksum)
+          NAK with our expected sequence number.                            SEQ @ NAK  -1  ( type f)  ( -1 ABORT"  BAD CKSUM" )
+          It is possible a D-frame should not be ACK'd until             THEN
+          after we have written it to disk, in case disk writes        WHILE DROP
+          interfere with servicing the serial port.                   REPEAT   BUMPSEQ  ;
+
+WRITE     Append input data to the file.                            : WRITE ( -) >IN-DATA KHANDLE @ ( a # h) FILE-WRITE   ;
+
+
+
+                                                                    file KERMIT.SCR
+
+ scr # 13024                                                        scr # 12024
+( KERMIT)                                                           ( KERMIT)
+
+RECEIVE  send NAK every second until we see SOH, then get           : RECEIVE ( -) CLS  " Waiting to recieve " .MSG
+         the rest of that first frame -- until we get the             RESET-SER-IN    INIT-LIMITS
+         S-frame.  Then compromise on settings and send               BEGIN 0 NAK  1000 MS  GET-GOOD-FRAME  'S = UNTIL
+         an ack for the S-frame.  Then, handle the frame              (  ) KINITACK  BUMPSEQ
+         types, getting file name and opening it for an               BEGIN  GETNEXT ( type) ( DUP EMIT )
+         F-frame, writing D-frames to the file, closing                  'D OF  WRITE  '. EMIT       0  ELSE
+         the file upon getting a Z-frame, and exiting upon               'F OF  RCVNAME              0  ELSE
+         getting a B-frame (EOT).                                        'Z OF  KHANDLE @ FCLOSE     0  ELSE
+                                                                         'B OF                      -1  ELSE
+                                                                         ( otherwise)  DROP          0 [ 4 ] THENS
+                                                                      UNTIL  (  )  ;
+

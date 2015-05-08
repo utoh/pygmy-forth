@@ -1,0 +1,99 @@
+file pfaaaa.txt (this is the "readme" file)
+
+
+
+A Simple Implementation of the Kermit Protocol
+               in Pygmy Forth
+
+              by Frank Sergeant
+              frank@pygmy.utoh.org
+              http://pygmy.utoh.org
+
+[ note April, 2007  I have corrected my email
+  and web addresses above.  References below
+  to www.eskimo.com are no longer valid.  See
+  pygmy.utoh.org instead (the Kermit files are
+  bundled with Pygmy version 1.7). ]
+
+See the announcement file (pfaaaa.ann) or the source code
+files for terms of use and distribution (basically free).
+
+The file names for the plain text files correspond to the
+file naming convention recommended by the Columbia
+University Kermit Project. The files begin with the prefix
+"pf" which stands for Pygmy Forth.  The files in plain
+text format should be available on the Kermit ftp site as
+
+  ftp://kermit.columbia.edu/kermit/c/pf*
+
+Those files, plus the non-plain-text files (which do not
+necessarily begin with the prefix "pf", are available in
+the pfkerm.zip file on the Kermit ftp site as
+
+  ftp://kermit.columbia.edu/kermit/archives/pfkerm.zip
+
+and also on my web site
+
+  http://www.eskimo.com/~pygmy
+
+Here is a description of the file contents:
+
+    pfaaaa.ann
+         The announcement file.
+
+    pfaaaa.txt
+         This file (the "readme" file).
+
+    pfkerm.doc
+         a copy of the article "A Simple Implementation
+         of the Kermit Protocol in Pygmy Forth"
+         which appeared in the May/June and July/Aug
+         1997 issues (Volume XIX, Numbers 1 and 2) of
+         _Forth Dimensions_, published by the Forth
+         Interest Group.
+
+    pfkerm.msg
+         Email correspondence between Frank da Cruz and
+         me correcting and commenting upon the article.
+
+    pfkerm.src
+         The source code in plain text format.
+
+    pfkerm.txt
+         The shadow comments in plain text format.
+
+    kermit.scr
+         The source code as a Forth block file.
+         (This is not a plain text file.)
+
+    kermit.dow
+         The associated "shadow" documentation file as
+         a Forth block file.
+         (This is not a plain text file.)
+
+    listing.txt
+         A text file containing a side-by-side listing
+         of the source and shadow files.  This has more
+         than 80 columns, so it is included in pfkerm.zip
+         but not on the plain text ftp site, but is
+         readable as plain text if your viewer supports
+         132 columns.
+
+
+In order to run the code, you would need a copy of
+Pygmy Forth version 1.5 for DOS (pygmy15.zip) or later,
+available on my web site.  You would also need serial
+port routines.  An article I wrote for _The Computer
+Journal_ might help you get started with the serial
+port routines.  Serial port routines are included in
+Pygmy version 1.7.
+
+
+If you use a different Forth, the code would need some
+modifications, but still might get you off to a good
+start.
+
+
+  -- Frank Sergeant
+
+(end of file pfaaa.txt)
